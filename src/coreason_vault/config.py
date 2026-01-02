@@ -14,7 +14,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class CoreasonVaultConfig(BaseSettings):
+class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc, unused-ignore]
     """
     Configuration for the Coreason Vault package.
     Loads settings from environment variables.
@@ -29,9 +29,7 @@ class CoreasonVaultConfig(BaseSettings):
     # Auth Methods
     VAULT_ROLE_ID: Optional[str] = Field(default=None, description="AppRole Role ID")
     VAULT_SECRET_ID: Optional[str] = Field(default=None, description="AppRole Secret ID")
-    KUBERNETES_SERVICE_ACCOUNT_TOKEN: Optional[str] = Field(
-        default=None, description="Kubernetes SA Token for auth"
-    )
+    KUBERNETES_SERVICE_ACCOUNT_TOKEN: Optional[str] = Field(default=None, description="Kubernetes SA Token for auth")
 
     # Mount Points
     VAULT_MOUNT_POINT: str = Field(default="secret", description="KV v2 Mount Point")

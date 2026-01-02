@@ -20,7 +20,7 @@ from coreason_vault.exceptions import SecretNotFoundError
 from coreason_vault.keeper import SecretKeeper
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc, unused-ignore]
 def mock_auth() -> tuple[Mock, Mock]:
     auth = Mock()
     client = Mock()

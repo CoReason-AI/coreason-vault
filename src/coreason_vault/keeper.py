@@ -85,5 +85,3 @@ class SecretKeeper:
         except Exception:
             logger.exception(f"Error fetching secret {path}")
             raise
-
-

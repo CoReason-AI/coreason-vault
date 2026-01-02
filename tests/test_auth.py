@@ -19,7 +19,7 @@ from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import VaultConnectionError
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc, unused-ignore]
 def mock_hvac_client() -> Generator[tuple[Mock, Mock], None, None]:
     with patch("coreason_vault.auth.hvac.Client") as mock:
         client_instance = Mock()
