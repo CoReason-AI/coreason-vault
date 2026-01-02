@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 
 import hvac
 import pytest
+
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
 
