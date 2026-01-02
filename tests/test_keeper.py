@@ -97,3 +97,18 @@ def test_keeper_generic_error(mock_auth: Any) -> None:
 
     with pytest.raises(Exception, match="Boom"):
         keeper.get_secret("path")
+
+
+def test_keeper_alias_get(mock_auth: Any) -> None:
+    """Test that the .get alias works same as .get_secret"""
+    auth, client = mock_auth
+    config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
+    keeper = SecretKeeper(auth, config)
+
+    client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {"alias": "worked"}}}
+
+    # Call using alias
+    result = keeper.get("alias/path")
+
+    assert result == {"alias": "worked"}
+    client.secrets.kv.v2.read_secret_version.assert_called_with(path="alias/path", mount_point="secret")

@@ -9,7 +9,6 @@
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
 import sys
-from pathlib import Path
 
 from loguru import logger as _logger
 
@@ -28,19 +27,4 @@ logger.add(
         "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
         "<level>{message}</level>"
     ),
-)
-
-# Ensure logs directory exists
-log_path = Path("logs")
-if not log_path.exists():
-    log_path.mkdir(parents=True, exist_ok=True)  # pragma: no cover
-
-# Sink 2: File (JSON, Rotation, Retention)
-logger.add(
-    "logs/app.log",
-    rotation="500 MB",
-    retention="10 days",
-    serialize=True,
-    enqueue=True,
-    level="INFO",
 )
