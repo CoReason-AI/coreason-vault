@@ -10,6 +10,9 @@ packages = [{include = "coreason_vault", from = "src"}]
 [tool.poetry.dependencies]
 python = ">=3.12, <3.15"
 loguru = "^0.7.2"
+hvac = "^2.4.0"
+pydantic = "^2.12.5"
+pydantic-settings = "^2.12.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

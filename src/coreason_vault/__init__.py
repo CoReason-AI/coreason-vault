@@ -8,14 +8,12 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-"""
-A new Python project.
-"""
+from coreason_vault.cipher import EncryptionError
+from coreason_vault.config import CoreasonVaultConfig
+from coreason_vault.keeper import SecretNotFoundError
+from coreason_vault.manager import VaultManager
 
-__version__ = "0.1.0"
-__author__ = "Gowtham A Rao"
-__email__ = "gowtham.rao@coreason.ai"
+__all__ = ["VaultManager", "VaultConfig", "SecretNotFoundError", "EncryptionError"]
 
-from .main import hello_world
-
-__all__ = ["hello_world"]
+# Alias for backward compatibility or easier access if requested
+VaultConfig = CoreasonVaultConfig
