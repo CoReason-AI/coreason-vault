@@ -8,10 +8,11 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.auth import VaultAuthentication
+from coreason_vault.cipher import EncryptionError, TransitCipher
+from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.keeper import SecretKeeper, SecretNotFoundError
-from coreason_vault.cipher import TransitCipher, EncryptionError
+
 
 class VaultManager:
     """
@@ -24,6 +25,7 @@ class VaultManager:
         self.auth = VaultAuthentication(config)
         self.secrets = SecretKeeper(self.auth, config)
         self.cipher = TransitCipher(self.auth)
+
 
 # Export Exceptions for easier access
 __all__ = [

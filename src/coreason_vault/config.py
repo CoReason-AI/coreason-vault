@@ -8,16 +8,18 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
 from typing import Optional
 
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class CoreasonVaultConfig(BaseSettings):
+
+class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc]
     """
     Configuration for the Coreason Vault package.
     Loads settings from environment variables.
     """
+
     model_config = SettingsConfigDict(env_prefix="", case_sensitive=True, extra="ignore")
 
     # Vault Connection

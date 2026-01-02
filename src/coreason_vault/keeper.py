@@ -9,11 +9,14 @@
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Any
+from typing import Any, Dict
+
+import hvac
+
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.utils.logger import logger
-import hvac
+
 
 class SecretKeeper:
     """
@@ -55,14 +58,14 @@ class SecretKeeper:
                 mount_point=mount_point,
             )
 
-            secret_data = response['data']['data']
+            secret_data = response["data"]["data"]
 
             # Update cache
             self._cache[path] = secret_data
             self._cache_expiry[path] = datetime.now() + timedelta(seconds=self.cache_ttl)
 
             logger.info(f"Secret {path} fetched from Vault (cached: False)")
-            return secret_data
+            return secret_data  # type: ignore[no-any-return]
 
         except hvac.exceptions.InvalidPath as e:
             logger.error(f"Secret not found at path: {path}")
@@ -78,10 +81,12 @@ class SecretKeeper:
         except hvac.exceptions.Forbidden as e:
             logger.error(f"Permission denied for secret path: {path}")
             raise PermissionError(f"Permission denied: {path}") from e
-        except Exception as e:
+        except Exception:
             logger.exception(f"Error fetching secret {path}")
             raise
 
+
 class SecretNotFoundError(Exception):
     """Raised when a secret is not found in Vault."""
+
     pass

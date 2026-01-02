@@ -8,10 +8,12 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
+from typing import Optional
+
 import hvac
+
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.utils.logger import logger
-from typing import Optional
 
 
 class VaultAuthentication:
@@ -62,34 +64,11 @@ class VaultAuthentication:
                 )
             elif self.config.KUBERNETES_SERVICE_ACCOUNT_TOKEN:
                 logger.info("Authenticating to Vault via Kubernetes")
-                # Default role for K8s auth usually matches the service account or is configured
-                # Here we assume standard K8s auth flow.
-                # Often needs role parameter. If not provided in config, hvac might need it.
-                # However, specification doesn't mention VAULT_K8S_ROLE.
-                # We will use the service account token.
-                # Typically `client.auth.kubernetes.login` requires `role` and `jwt`.
-                # If role is not provided, we might need to update config or infer it.
-                # For now, let's assume we pass the token.
-                # But hvac `login` usually needs a role.
-                # Checking hvac docs or common patterns: often role is required.
-                # Let's check if we can get by without it or if it should be an env var we missed?
-                # The prompt mentions VAULT_ROLE_ID for AppRole.
-                # For K8s, it says "KUBERNETES_SERVICE_ACCOUNT_TOKEN".
-                # It does NOT mention a K8s role.
-                # Some setups use the SA name as role, or a default.
-                # We will try to login. If 'role' is mandatory in hvac, we might default to 'webapp' or similar if not specified?
-                # No, let's look at `VaultAuthentication` inputs in specs: "VAULT_ROLE_ID, VAULT_SECRET_ID OR KUBERNETES_SERVICE_ACCOUNT_TOKEN".
-                # Wait, maybe VAULT_ROLE_ID is also used for K8s role?
-                # "Detect the authentication method (AppRole for local/VM, Kubernetes for Prod)."
-                # If K8s, we need a role.
-                # I will assume VAULT_ROLE_ID might be used as the role name if KUBERNETES_SERVICE_ACCOUNT_TOKEN is present,
-                # OR I should add an optional VAULT_K8S_ROLE to config.
-                # But I must strictly follow spec.
-                # Spec says: "Input: Environment Variables (VAULT_ADDR, VAULT_ROLE_ID, VAULT_SECRET_ID OR KUBERNETES_SERVICE_ACCOUNT_TOKEN)."
-                # It is possible VAULT_ROLE_ID is the role for K8s too.
-                # Let's try to use VAULT_ROLE_ID as the role if present, otherwise maybe default or fail?
-                # Actually, `hvac` `auth.kubernetes.login` signature is `role, jwt, ...`.
-                # So we definitely need a role.
+                # Default role for K8s auth usually matches the service account or is configured.
+                # We assume standard K8s auth flow using VAULT_ROLE_ID as the role name.
+                # The prompt specifies inputs:
+                # "VAULT_ROLE_ID, VAULT_SECRET_ID OR KUBERNETES_SERVICE_ACCOUNT_TOKEN".
+                # We interpret this as VAULT_ROLE_ID serving as the role parameter for K8s too.
 
                 role = self.config.VAULT_ROLE_ID
                 if not role:
@@ -107,13 +86,13 @@ class VaultAuthentication:
         except hvac.exceptions.VaultError as e:
             logger.error(f"Failed to authenticate with Vault: {e}")
             raise ConnectionError(f"Vault authentication failed: {e}") from e
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error during Vault authentication")
             raise
 
         if not client.is_authenticated():
-             logger.error("Client claims success but is_authenticated() is False")
-             raise ConnectionError("Vault authentication failed silently")
+            logger.error("Client claims success but is_authenticated() is False")
+            raise ConnectionError("Vault authentication failed silently")
 
         logger.info("Successfully authenticated to Vault")
         return client

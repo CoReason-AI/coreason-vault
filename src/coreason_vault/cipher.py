@@ -10,13 +10,16 @@
 
 import base64
 from typing import Optional, Union
+
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.utils.logger import logger
-import hvac
+
 
 class EncryptionError(Exception):
     """Raised when encryption or decryption fails."""
+
     pass
+
 
 class TransitCipher:
     """
@@ -45,26 +48,25 @@ class TransitCipher:
 
         # Prepare plaintext: base64 encode
         if isinstance(plaintext, str):
-            plaintext_bytes = plaintext.encode('utf-8')
+            plaintext_bytes = plaintext.encode("utf-8")
         else:
             plaintext_bytes = plaintext
 
-        encoded_plaintext = base64.b64encode(plaintext_bytes).decode('utf-8')
+        encoded_plaintext = base64.b64encode(plaintext_bytes).decode("utf-8")
 
         # Prepare context if present
         encoded_context = None
         if context:
-            encoded_context = base64.b64encode(context.encode('utf-8')).decode('utf-8')
+            encoded_context = base64.b64encode(context.encode("utf-8")).decode("utf-8")
 
         try:
             response = client.secrets.transit.encrypt_data(
-                name=key_name,
-                plaintext=encoded_plaintext,
-                context=encoded_context
+                name=key_name, plaintext=encoded_plaintext, context=encoded_context
             )
-            ciphertext = response['data']['ciphertext']
-            # logger.info(f"Data encrypted with key {key_name}") # Security: Avoiding excessive logging, but success log is okay
-            return ciphertext
+            ciphertext = response["data"]["ciphertext"]
+            # Security: Avoiding excessive logging, but success log is okay
+            # logger.info(f"Data encrypted with key {key_name}")
+            return ciphertext  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Encryption failed for key {key_name}: {e}")
@@ -92,21 +94,19 @@ class TransitCipher:
         # Prepare context if present
         encoded_context = None
         if context:
-            encoded_context = base64.b64encode(context.encode('utf-8')).decode('utf-8')
+            encoded_context = base64.b64encode(context.encode("utf-8")).decode("utf-8")
 
         try:
             response = client.secrets.transit.decrypt_data(
-                name=key_name,
-                ciphertext=ciphertext,
-                context=encoded_context
+                name=key_name, ciphertext=ciphertext, context=encoded_context
             )
-            encoded_plaintext = response['data']['plaintext']
+            encoded_plaintext = response["data"]["plaintext"]
 
             # Decode base64
             plaintext_bytes = base64.b64decode(encoded_plaintext)
 
             try:
-                return plaintext_bytes.decode('utf-8')
+                return plaintext_bytes.decode("utf-8")
             except UnicodeDecodeError:
                 return plaintext_bytes
 
