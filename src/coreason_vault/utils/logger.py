@@ -8,6 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
+import os
 import sys
 
 from loguru import logger as _logger
@@ -20,7 +21,7 @@ logger.remove()
 # Sink 1: Stdout (Human-readable)
 logger.add(
     sys.stderr,
-    level="INFO",
+    level=os.getenv("LOG_LEVEL", "INFO"),
     format=(
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
         "<level>{level: <8}</level> | "
