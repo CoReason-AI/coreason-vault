@@ -85,3 +85,6 @@ class SecretKeeper:
         except Exception:
             logger.exception(f"Error fetching secret {path}")
             raise
+
+    # Alias for convenience and to match spec usage
+    get = get_secret
