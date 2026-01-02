@@ -16,10 +16,11 @@ import hvac
 import pytest
 
 from coreason_vault.config import CoreasonVaultConfig
-from coreason_vault.keeper import SecretKeeper, SecretNotFoundError
+from coreason_vault.exceptions import SecretNotFoundError
+from coreason_vault.keeper import SecretKeeper
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_auth() -> tuple[Mock, Mock]:
     auth = Mock()
     client = Mock()

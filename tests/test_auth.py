@@ -16,9 +16,10 @@ import pytest
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
+from coreason_vault.exceptions import VaultConnectionError
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_hvac_client() -> Generator[tuple[Mock, Mock], None, None]:
     with patch("coreason_vault.auth.hvac.Client") as mock:
         client_instance = Mock()
@@ -86,7 +87,7 @@ def test_auth_failure_vault_error(mock_hvac_client: Any) -> None:
 
     auth = VaultAuthentication(config)
 
-    with pytest.raises(ConnectionError, match="Vault authentication failed"):
+    with pytest.raises(VaultConnectionError, match="Vault authentication failed"):
         auth.get_client()
 
 
@@ -101,7 +102,7 @@ def test_auth_failure_silent(mock_hvac_client: Any) -> None:
 
     auth = VaultAuthentication(config)
 
-    with pytest.raises(ConnectionError, match="Vault authentication failed silently"):
+    with pytest.raises(VaultConnectionError, match="Vault authentication failed silently"):
         auth.get_client()
 
 

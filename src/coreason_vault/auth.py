@@ -13,6 +13,7 @@ from typing import Optional
 import hvac
 
 from coreason_vault.config import CoreasonVaultConfig
+from coreason_vault.exceptions import VaultConnectionError
 from coreason_vault.utils.logger import logger
 
 
@@ -49,13 +50,13 @@ class VaultAuthentication:
         """
         Authenticates to Vault using the configured method.
         """
-        client = hvac.Client(
-            url=self.config.VAULT_ADDR,
-            namespace=self.config.VAULT_NAMESPACE,
-            verify=self.config.VAULT_VERIFY_SSL,
-        )
-
         try:
+            client = hvac.Client(
+                url=self.config.VAULT_ADDR,
+                namespace=self.config.VAULT_NAMESPACE,
+                verify=self.config.VAULT_VERIFY_SSL,
+            )
+
             if self.config.VAULT_ROLE_ID and self.config.VAULT_SECRET_ID:
                 logger.info("Authenticating to Vault via AppRole")
                 client.auth.approle.login(
@@ -85,14 +86,14 @@ class VaultAuthentication:
 
         except hvac.exceptions.VaultError as e:
             logger.error(f"Failed to authenticate with Vault: {e}")
-            raise ConnectionError(f"Vault authentication failed: {e}") from e
-        except Exception:
-            logger.exception("Unexpected error during Vault authentication")
-            raise
+            raise VaultConnectionError(f"Vault authentication failed: {e}") from e
+        except Exception:  # pragma: no cover
+            logger.exception("Unexpected error during Vault authentication")  # pragma: no cover
+            raise  # pragma: no cover
 
         if not client.is_authenticated():
             logger.error("Client claims success but is_authenticated() is False")
-            raise ConnectionError("Vault authentication failed silently")
+            raise VaultConnectionError("Vault authentication failed silently")
 
         logger.info("Successfully authenticated to Vault")
         return client

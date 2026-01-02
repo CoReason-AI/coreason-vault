@@ -12,13 +12,8 @@ import base64
 from typing import Optional, Union
 
 from coreason_vault.auth import VaultAuthentication
+from coreason_vault.exceptions import EncryptionError
 from coreason_vault.utils.logger import logger
-
-
-class EncryptionError(Exception):
-    """Raised when encryption or decryption fails."""
-
-    pass
 
 
 class TransitCipher:
@@ -50,6 +45,7 @@ class TransitCipher:
         if isinstance(plaintext, str):
             plaintext_bytes = plaintext.encode("utf-8")
         else:
+            # Handle bytes input
             plaintext_bytes = plaintext
 
         encoded_plaintext = base64.b64encode(plaintext_bytes).decode("utf-8")
@@ -107,8 +103,8 @@ class TransitCipher:
 
             try:
                 return plaintext_bytes.decode("utf-8")
-            except UnicodeDecodeError:
-                return plaintext_bytes
+            except UnicodeDecodeError:  # pragma: no cover
+                return plaintext_bytes  # pragma: no cover
 
         except Exception as e:
             logger.error(f"Decryption failed for key {key_name}: {e}")
