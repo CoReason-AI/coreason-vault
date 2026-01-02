@@ -14,7 +14,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc]
+class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc, unused-ignore]
     """
     Configuration for the Coreason Vault package.
     Loads settings from environment variables.
@@ -24,15 +24,15 @@ class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc]
 
     # Vault Connection
     VAULT_ADDR: str = Field(..., description="The URL of the Vault server")
-    VAULT_NAMESPACE: Optional[str] = Field(None, description="The Vault namespace")
+    VAULT_NAMESPACE: Optional[str] = Field(default=None, description="The Vault namespace")
 
     # Auth Methods
-    VAULT_ROLE_ID: Optional[str] = Field(None, description="AppRole Role ID")
-    VAULT_SECRET_ID: Optional[str] = Field(None, description="AppRole Secret ID")
-    KUBERNETES_SERVICE_ACCOUNT_TOKEN: Optional[str] = Field(None, description="Kubernetes SA Token for auth")
+    VAULT_ROLE_ID: Optional[str] = Field(default=None, description="AppRole Role ID")
+    VAULT_SECRET_ID: Optional[str] = Field(default=None, description="AppRole Secret ID")
+    KUBERNETES_SERVICE_ACCOUNT_TOKEN: Optional[str] = Field(default=None, description="Kubernetes SA Token for auth")
 
     # Mount Points
-    VAULT_MOUNT_POINT: str = Field("secret", description="KV v2 Mount Point")
+    VAULT_MOUNT_POINT: str = Field(default="secret", description="KV v2 Mount Point")
 
     # Optional
-    VAULT_VERIFY_SSL: bool = Field(True, description="Verify SSL certificates")
+    VAULT_VERIFY_SSL: bool = Field(default=True, description="Verify SSL certificates")

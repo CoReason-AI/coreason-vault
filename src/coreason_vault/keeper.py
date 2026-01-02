@@ -15,6 +15,7 @@ import hvac
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
+from coreason_vault.exceptions import SecretNotFoundError
 from coreason_vault.utils.logger import logger
 
 
@@ -84,9 +85,3 @@ class SecretKeeper:
         except Exception:
             logger.exception(f"Error fetching secret {path}")
             raise
-
-
-class SecretNotFoundError(Exception):
-    """Raised when a secret is not found in Vault."""
-
-    pass

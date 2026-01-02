@@ -8,9 +8,8 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-from coreason_vault.cipher import EncryptionError
 from coreason_vault.config import CoreasonVaultConfig
-from coreason_vault.keeper import SecretNotFoundError
+from coreason_vault.exceptions import EncryptionError, SecretNotFoundError
 from coreason_vault.manager import VaultManager
 
 __all__ = ["VaultManager", "VaultConfig", "SecretNotFoundError", "EncryptionError"]
