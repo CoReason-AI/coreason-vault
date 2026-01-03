@@ -12,8 +12,9 @@ import os
 from unittest.mock import patch
 
 import pytest
-from coreason_vault.config import CoreasonVaultConfig
 from pydantic import ValidationError
+
+from coreason_vault.config import CoreasonVaultConfig
 
 
 def test_config_defaults() -> None:

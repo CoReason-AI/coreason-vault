@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, Mock
 
 import hvac
 import pytest
+
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.cipher import TransitCipher
 from coreason_vault.config import CoreasonVaultConfig
