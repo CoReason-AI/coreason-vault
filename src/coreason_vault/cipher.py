@@ -99,7 +99,7 @@ class TransitCipher:
             encoded_plaintext = response["data"]["plaintext"]
 
             # Decode base64
-            plaintext_bytes = base64.b64decode(encoded_plaintext)
+            plaintext_bytes = base64.b64decode(encoded_plaintext, validate=True)
 
             try:
                 return plaintext_bytes.decode("utf-8")
@@ -108,4 +108,5 @@ class TransitCipher:
 
         except Exception as e:
             logger.error(f"Decryption failed for key {key_name}: {e}")
+            # Ensure binascii.Error (base64 decode fail) is wrapped
             raise EncryptionError(f"Decryption failed: {e}") from e
