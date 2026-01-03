@@ -65,16 +65,11 @@ class VaultAuthentication:
                 )
             elif self.config.KUBERNETES_SERVICE_ACCOUNT_TOKEN:
                 logger.info("Authenticating to Vault via Kubernetes")
-                # Default role for K8s auth usually matches the service account or is configured.
-                # We assume standard K8s auth flow using VAULT_ROLE_ID as the role name.
-                # The prompt specifies inputs:
-                # "VAULT_ROLE_ID, VAULT_SECRET_ID OR KUBERNETES_SERVICE_ACCOUNT_TOKEN".
-                # We interpret this as VAULT_ROLE_ID serving as the role parameter for K8s too.
 
-                role = self.config.VAULT_ROLE_ID
+                role = self.config.VAULT_K8S_ROLE
                 if not role:
-                    logger.error("Kubernetes authentication requires a role (set via VAULT_ROLE_ID)")
-                    raise ValueError("Missing Kubernetes role (VAULT_ROLE_ID)")
+                    logger.error("Kubernetes authentication requires a role (set via VAULT_K8S_ROLE)")
+                    raise ValueError("Missing Kubernetes role (VAULT_K8S_ROLE)")
 
                 client.auth.kubernetes.login(
                     role=role,

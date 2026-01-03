@@ -13,7 +13,6 @@ from typing import Any
 from unittest.mock import ANY, Mock
 
 import pytest
-
 from coreason_vault.cipher import TransitCipher
 from coreason_vault.exceptions import EncryptionError
 

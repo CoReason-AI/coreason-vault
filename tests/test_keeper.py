@@ -14,7 +14,6 @@ from unittest.mock import Mock
 
 import hvac
 import pytest
-
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import SecretNotFoundError
 from coreason_vault.keeper import SecretKeeper

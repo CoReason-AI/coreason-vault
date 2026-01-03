@@ -13,7 +13,6 @@ from unittest.mock import Mock, patch
 
 import hvac
 import pytest
-
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import VaultConnectionError
@@ -51,8 +50,11 @@ def test_auth_kubernetes(mock_hvac_client: Any) -> None:
     config = CoreasonVaultConfig(
         VAULT_ADDR="http://localhost:8200",
         KUBERNETES_SERVICE_ACCOUNT_TOKEN="k8s-token",
-        VAULT_ROLE_ID="k8s-role",  # Using ROLE_ID as role name
+        VAULT_K8S_ROLE="k8s-role",
     )
+
+    # Ensure VAULT_ROLE_ID is NOT used
+    config.VAULT_ROLE_ID = "should-be-ignored"
 
     auth = VaultAuthentication(config)
     client = auth.get_client()
@@ -158,7 +160,8 @@ def test_auth_kubernetes_missing_role(mock_hvac_client: Any) -> None:
 
     config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", KUBERNETES_SERVICE_ACCOUNT_TOKEN="k8s-token")
     # Role ID is missing
-    config.VAULT_ROLE_ID = None
+    config.VAULT_K8S_ROLE = None
+    config.VAULT_ROLE_ID = "some-app-role"  # Should be ignored for K8s auth
 
     auth = VaultAuthentication(config)
 

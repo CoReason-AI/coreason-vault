@@ -12,7 +12,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 import requests
-
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.cipher import TransitCipher
 from coreason_vault.config import CoreasonVaultConfig

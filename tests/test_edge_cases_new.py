@@ -13,13 +13,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 import requests
-from hvac import exceptions
-
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.cipher import TransitCipher
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import EncryptionError, VaultConnectionError
 from coreason_vault.keeper import SecretKeeper
+from hvac import exceptions
 
 
 # Fixtures
