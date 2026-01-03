@@ -84,12 +84,16 @@ class VaultAuthentication:
                 logger.error("No valid authentication method found in configuration")
                 raise ValueError("Missing authentication credentials (AppRole or Kubernetes)")
 
+        except ValueError:
+            # Re-raise configuration errors (e.g. missing role)
+            raise
         except hvac.exceptions.VaultError as e:
             logger.error(f"Failed to authenticate with Vault: {e}")
             raise VaultConnectionError(f"Vault authentication failed: {e}") from e
-        except Exception:  # pragma: no cover
-            logger.exception("Unexpected error during Vault authentication")  # pragma: no cover
-            raise  # pragma: no cover
+        except Exception as e:
+            # Catch network errors (requests.exceptions.ConnectionError etc) and others
+            logger.error(f"Unexpected error during Vault authentication: {e}")
+            raise VaultConnectionError(f"Vault authentication failed: {e}") from e
 
         if not client.is_authenticated():
             logger.error("Client claims success but is_authenticated() is False")
