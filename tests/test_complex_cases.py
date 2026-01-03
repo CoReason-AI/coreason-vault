@@ -19,6 +19,7 @@ from coreason_vault.auth import VaultAuthentication
 from coreason_vault.cipher import TransitCipher
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import EncryptionError
+from coreason_vault.keeper import SecretKeeper
 
 
 @pytest.fixture  # type: ignore[misc, unused-ignore]
@@ -168,3 +169,45 @@ class TestAuthResilience:
 
         # 4. The internal state should be updated
         assert auth._client == fresh_client
+
+
+class TestSecretKeeperComplex:
+    def test_custom_mount_point(self, mock_auth: Any) -> None:
+        """Verify that SecretKeeper respects a non-default mount point."""
+        auth, client = mock_auth
+        # Configure a custom mount point
+        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_MOUNT_POINT="custom-mount")
+        keeper = SecretKeeper(auth, config)
+
+        client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {"key": "val"}}}
+
+        # Fetch secret
+        keeper.get_secret("some/path")
+
+        # Assert it used the custom mount point
+        client.secrets.kv.v2.read_secret_version.assert_called_with(path="some/path", mount_point="custom-mount")
+
+    def test_malformed_response(self, mock_auth: Any) -> None:
+        """Verify behavior when Vault returns a malformed response (missing data keys)."""
+        auth, client = mock_auth
+        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
+        keeper = SecretKeeper(auth, config)
+
+        # Response missing 'data' -> 'data' nesting
+        client.secrets.kv.v2.read_secret_version.return_value = {"data": {}}
+
+        # Should raise KeyError (or we could wrap it, but robust code should at least not hang)
+        with pytest.raises(KeyError):
+            keeper.get_secret("bad/response")
+
+    def test_empty_secret_data(self, mock_auth: Any) -> None:
+        """Verify handling of a secret that exists but has no keys."""
+        auth, client = mock_auth
+        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
+        keeper = SecretKeeper(auth, config)
+
+        # Secret exists, but data is empty dict
+        client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {}}}
+
+        result = keeper.get_secret("empty/secret")
+        assert result == {}
