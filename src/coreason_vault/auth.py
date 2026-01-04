@@ -8,6 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
+import time
 from typing import Optional
 
 import hvac
@@ -23,28 +24,41 @@ class VaultAuthentication:
     Supports AppRole and Kubernetes authentication methods.
     """
 
+    # How often to validate the token with the server (seconds)
+    TOKEN_VALIDATION_INTERVAL = 60
+
     def __init__(self, config: CoreasonVaultConfig):
         self.config = config
         self._client: Optional[hvac.Client] = None
+        self._last_token_check: float = 0.0
 
     def get_client(self) -> hvac.Client:
         """
         Returns an authenticated Vault client.
         Checks token validity and renews/re-authenticates if necessary.
+        Uses a short TTL to avoid checking on every call.
         """
         if self._client is None:
             self._client = self._authenticate()
             return self._client
 
-        try:
-            # Check if token is valid and active
-            # lookup_self raises Forbidden if token is invalid/expired
-            self._client.auth.token.lookup_self()
-        except (hvac.exceptions.Forbidden, hvac.exceptions.VaultError):
-            logger.info("Vault token expired or invalid, re-authenticating...")
-            self._client = self._authenticate()
+        if self._should_validate_token():
+            try:
+                # Check if token is valid and active
+                # lookup_self raises Forbidden if token is invalid/expired
+                self._client.auth.token.lookup_self()
+                self._last_token_check = time.time()
+            except (hvac.exceptions.Forbidden, hvac.exceptions.VaultError):
+                logger.info("Vault token expired or invalid, re-authenticating...")
+                self._client = self._authenticate()
 
         return self._client
+
+    def _should_validate_token(self) -> bool:
+        """
+        Determines if we should validate the token against the server.
+        """
+        return (time.time() - self._last_token_check) > self.TOKEN_VALIDATION_INTERVAL
 
     def _authenticate(self) -> hvac.Client:
         """
@@ -79,20 +93,20 @@ class VaultAuthentication:
                 logger.error("No valid authentication method found in configuration")
                 raise ValueError("Missing authentication credentials (AppRole or Kubernetes)")
 
+            if not client.is_authenticated():
+                logger.error("Client claims success but is_authenticated() is False")
+                raise VaultConnectionError("Vault authentication failed silently")
+
+            logger.info("Successfully authenticated to Vault")
+            # Reset validation timer on fresh auth
+            self._last_token_check = time.time()
+            return client
+
         except ValueError:
-            # Re-raise configuration errors (e.g. missing role)
             raise
         except hvac.exceptions.VaultError as e:
             logger.error(f"Failed to authenticate with Vault: {e}")
             raise VaultConnectionError(f"Vault authentication failed: {e}") from e
         except Exception as e:
-            # Catch network errors (requests.exceptions.ConnectionError etc) and others
             logger.error(f"Unexpected error during Vault authentication: {e}")
             raise VaultConnectionError(f"Vault authentication failed: {e}") from e
-
-        if not client.is_authenticated():
-            logger.error("Client claims success but is_authenticated() is False")
-            raise VaultConnectionError("Vault authentication failed silently")
-
-        logger.info("Successfully authenticated to Vault")
-        return client
