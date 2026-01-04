@@ -34,6 +34,7 @@ def test_config_env_overrides() -> None:
         "VAULT_MOUNT_POINT": "custom_secret",
         "VAULT_VERIFY_SSL": "false",
         "VAULT_NAMESPACE": "admin",
+        "VAULT_K8S_ROLE": "test-role",
     }
     with patch.dict(os.environ, env_vars, clear=True):
         config = CoreasonVaultConfig()  # type: ignore[call-arg, unused-ignore]
@@ -41,6 +42,7 @@ def test_config_env_overrides() -> None:
         assert config.VAULT_MOUNT_POINT == "custom_secret"
         assert config.VAULT_VERIFY_SSL is False
         assert config.VAULT_NAMESPACE == "admin"
+        assert config.VAULT_K8S_ROLE == "test-role"
 
 
 def test_config_missing_required() -> None:

@@ -29,6 +29,7 @@ class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc, unused-ignore]
     # Auth Methods
     VAULT_ROLE_ID: Optional[str] = Field(default=None, description="AppRole Role ID")
     VAULT_SECRET_ID: Optional[str] = Field(default=None, description="AppRole Secret ID")
+    VAULT_K8S_ROLE: Optional[str] = Field(default=None, description="Kubernetes Role Name")
     KUBERNETES_SERVICE_ACCOUNT_TOKEN: Optional[str] = Field(default=None, description="Kubernetes SA Token for auth")
 
     # Mount Points
