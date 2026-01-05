@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: cov-5.0.0
+collected 53 items
+
+tests/test_additional_edge_cases.py .......                              [ 13%]
+tests/test_advanced_scenarios.py ...                                     [ 18%]
+tests/test_auth.py .......                                               [ 32%]
+tests/test_auth_coverage.py ..                                           [ 35%]
+tests/test_cipher.py .......                                             [ 49%]
+tests/test_complex_cases.py ........                                     [ 64%]
+tests/test_config.py ....                                                [ 71%]
+tests/test_edge_cases_new.py ......                                      [ 83%]
+tests/test_keeper.py ....                                                [ 90%]
+tests/test_manager.py ..                                                 [ 94%]
+tests/test_refactor_edge_cases.py ..                                     [ 98%]
+tests/test_utils.py .                                                    [100%]
+
+============================== 53 passed in 1.83s ==============================

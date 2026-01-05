@@ -1,0 +1,45 @@
+trim trailing whitespace.................................................Failed
+- hook id: trailing-whitespace
+- exit code: 1
+- files were modified by this hook
+
+Fixing tests/test_additional_edge_cases.py
+
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check toml...............................................................Passed
+check json...........................................(no files to check)Skipped
+ruff (legacy alias)......................................................Failed
+- hook id: ruff
+- exit code: 1
+- files were modified by this hook
+
+F841 Local variable `original_init` is assigned to but never used
+   --> tests/test_additional_edge_cases.py:139:9
+    |
+137 |         # However, to simulate the RACE condition, we need the first call to block slightly.
+138 |
+139 |         original_init = MockClient
+    |         ^^^^^^^^^^^^^
+140 |
+141 |         def slow_init(*args: Any, **kwargs: Any) -> Any:
+    |
+help: Remove assignment to unused variable `original_init`
+
+Found 2 errors (1 fixed, 1 remaining).
+No fixes available (1 hidden fix can be enabled with the `--unsafe-fixes` option).
+
+ruff format..............................................................Failed
+- hook id: ruff-format
+- files were modified by this hook
+
+1 file reformatted, 20 files left unchanged
+
+mypy.....................................................................Failed
+- hook id: mypy
+- exit code: 1
+
+tests/test_additional_edge_cases.py:29: error: Untyped decorator makes function "mock_auth" untyped  [misc]
+Found 1 error in 1 file (checked 21 source files)
+
+Hadolint.................................................................Passed
