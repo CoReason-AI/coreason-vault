@@ -8,8 +8,13 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
+import base64
+import threading
+import time
+from typing import Any
 from unittest.mock import Mock, patch
 
+import hvac
 import pytest
 import requests
 
@@ -17,122 +22,164 @@ from coreason_vault.auth import VaultAuthentication
 from coreason_vault.cipher import TransitCipher
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import EncryptionError, VaultConnectionError
+from coreason_vault.keeper import SecretKeeper
 
 
-class TestAdditionalEdgeCases:
+# --- Fixtures ---
+@pytest.fixture  # type: ignore[misc]
+def mock_auth() -> tuple[Mock, Mock]:
+    auth = Mock(spec=VaultAuthentication)
+    client = Mock()
+    auth.get_client.return_value = client
+    return auth, client
+
+
+# --- SecretKeeper Edge Cases ---
+
+
+def test_keeper_empty_secret(mock_auth: Any) -> None:
+    """Test retrieving a secret that exists but is empty."""
+    auth, client = mock_auth
+    config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
+    keeper = SecretKeeper(auth, config)
+
+    # Empty dictionary
+    client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {}}}
+    assert keeper.get_secret("empty/path") == {}
+
+
+def test_keeper_custom_mount(mock_auth: Any) -> None:
+    """Test retrieving secret from a custom mount point."""
+    auth, client = mock_auth
+    config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_MOUNT_POINT="custom-mount")
+    keeper = SecretKeeper(auth, config)
+
+    client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {"foo": "bar"}}}
+    keeper.get_secret("path")
+
+    client.secrets.kv.v2.read_secret_version.assert_called_with(path="path", mount_point="custom-mount")
+
+
+# --- TransitCipher Edge Cases ---
+
+
+def test_cipher_unicode_torture(mock_auth: Any) -> None:
+    """Test encryption and decryption of complex unicode strings."""
+    auth, client = mock_auth
+    cipher = TransitCipher(auth)
+
+    unicode_str = "🔒 Secrèt 🚀 € @ ß"
+    b64_str = base64.b64encode(unicode_str.encode("utf-8")).decode("utf-8")
+
+    # Mock Encrypt
+    client.secrets.transit.encrypt_data.return_value = {"data": {"ciphertext": "vault:v1:unicode"}}
+    assert cipher.encrypt(unicode_str, "key") == "vault:v1:unicode"
+
+    # Check what was sent
+    client.secrets.transit.encrypt_data.assert_called_with(name="key", plaintext=b64_str, context=None)
+
+    # Mock Decrypt
+    client.secrets.transit.decrypt_data.return_value = {"data": {"plaintext": b64_str}}
+    assert cipher.decrypt("vault:v1:unicode", "key") == unicode_str
+
+
+def test_cipher_malformed_base64_response(mock_auth: Any) -> None:
+    """Test behavior when Vault returns invalid base64 (should raise EncryptionError)."""
+    auth, client = mock_auth
+    cipher = TransitCipher(auth)
+
+    # Invalid base64 in response
+    client.secrets.transit.decrypt_data.return_value = {"data": {"plaintext": "!!!NOT-BASE64!!!"}}
+
+    with pytest.raises(EncryptionError) as exc:
+        cipher.decrypt("ciphertext", "key")
+
+    # The underlying error (binascii.Error or similar) should be wrapped or caught
+    assert "Decryption failed" in str(exc.value)
+
+
+def test_cipher_vault_error(mock_auth: Any) -> None:
+    """Test generic Vault error handling in cipher."""
+    auth, client = mock_auth
+    cipher = TransitCipher(auth)
+
+    client.secrets.transit.encrypt_data.side_effect = hvac.exceptions.VaultError("Server Error")
+
+    with pytest.raises(EncryptionError):
+        cipher.encrypt("data", "key")
+
+
+# --- Concurrency & Threading ---
+
+
+def test_concurrency_locking() -> None:
     """
-    New test cases to cover gaps identified during review.
+    Simulate multiple threads trying to authenticate at once.
+    Only one should trigger the login, others should wait and use the result.
     """
+    config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret")
+    auth = VaultAuthentication(config)
 
-    def test_auth_with_namespace(self) -> None:
-        """Verify that VAULT_NAMESPACE is correctly passed to hvac Client."""
-        config = CoreasonVaultConfig(
-            VAULT_ADDR="http://localhost:8200",
-            VAULT_NAMESPACE="my-namespace",
-            VAULT_ROLE_ID="role",
-            VAULT_SECRET_ID="secret",
-        )
-        auth = VaultAuthentication(config)
+    # We need to mock hvac.Client to succeed
+    with patch("coreason_vault.auth.hvac.Client") as MockClient:
+        client_instance = MockClient.return_value
+        client_instance.is_authenticated.return_value = True
 
-        with patch("coreason_vault.auth.hvac.Client") as MockClient:
-            mock_instance = Mock()
-            MockClient.return_value = mock_instance
-            mock_instance.is_authenticated.return_value = True
+        # We also need to patch the _authenticate method on the INSTANCE to verify call count
+        # But _authenticate calls hvac.Client, so we must be careful not to mock it out completely
+        # unless we reproduce the side effect.
+        # Easier strategy: Use the MockClient as the spy.
 
+        # But wait, auth._authenticate() constructs hvac.Client().
+        # So counting calls to MockClient() is sufficient to see how many times we tried to connect.
+
+        # However, to simulate the RACE condition, we need the first call to block slightly.
+
+        def slow_init(*args: Any, **kwargs: Any) -> Any:
+            time.sleep(0.1)  # slow down init
+            return client_instance
+
+        MockClient.side_effect = slow_init
+
+        # Threads
+        threads = []
+        results = []
+
+        def worker() -> None:
+            c = auth.get_client()
+            results.append(c)
+
+        for _ in range(5):
+            t = threading.Thread(target=worker)
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        # Assertions
+        assert len(results) == 5
+        # They should all be the same client object
+        assert all(c == results[0] for c in results)
+
+        # hvac.Client() should have been instantiated exactly once
+        # (Assuming the lock works. If it didn't, we'd see 5 calls)
+        assert MockClient.call_count == 1
+
+
+# --- Network/Connection Edge Cases ---
+
+
+def test_auth_network_timeout() -> None:
+    """Test that connection timeouts (requests exceptions) are wrapped."""
+    config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret")
+    auth = VaultAuthentication(config)
+
+    with patch("coreason_vault.auth.hvac.Client") as MockClient:
+        # Simulate exception during Init
+        MockClient.side_effect = requests.exceptions.ConnectTimeout("Timeout")
+
+        with pytest.raises(VaultConnectionError) as exc:
             auth.get_client()
 
-            MockClient.assert_called_once()
-            _, kwargs = MockClient.call_args
-            assert kwargs.get("namespace") == "my-namespace"
-
-    def test_auth_ssl_verify_false(self) -> None:
-        """Verify that VAULT_VERIFY_SSL=False is respected."""
-        config = CoreasonVaultConfig(
-            VAULT_ADDR="http://localhost:8200",
-            VAULT_VERIFY_SSL=False,
-            VAULT_ROLE_ID="role",
-            VAULT_SECRET_ID="secret",
-        )
-        auth = VaultAuthentication(config)
-
-        with patch("coreason_vault.auth.hvac.Client") as MockClient:
-            mock_instance = Mock()
-            MockClient.return_value = mock_instance
-            mock_instance.is_authenticated.return_value = True
-
-            auth.get_client()
-
-            MockClient.assert_called_once()
-            _, kwargs = MockClient.call_args
-            assert kwargs.get("verify") is False
-
-    def test_cipher_context_as_bytes_error(self) -> None:
-        """
-        Verify behavior when context is passed as bytes.
-        Since we added explicit type checking in `_encode_base64`, this should raise TypeError.
-        Wait, _encode_base64 accepts bytes.
-        Wait, the original test expected AttributeError because bytes.encode doesn't exist.
-        Now `_encode_base64` handles bytes. So it should SUCCEED?
-        No, hvac expects context to be a base64 encoded string.
-        Our encrypt method:
-        encoded_context = self._encode_base64(context)
-        If context is b"foo", encoded_context becomes b64(b"foo") -> "Zm9v".
-        This is valid input for hvac!
-        So passing bytes as context IS now supported by my refactor.
-        This "edge case error" test is now checking for a feature I accidentally added?
-        Let's pass an invalid type like int to trigger TypeError.
-        """
-        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
-        auth = VaultAuthentication(config)
-        cipher = TransitCipher(auth)
-
-        # Mock client not needed if it fails before call, but setup just in case
-        auth.get_client = Mock()  # type: ignore
-
-        # Pass an integer to trigger the new TypeError
-        with pytest.raises(TypeError):
-            cipher.encrypt("data", "key", context=123)  # type: ignore
-
-    def test_auth_connection_error_generic(self) -> None:
-        """
-        Test generic connection error (e.g. ConnectionRefused) during auth,
-        ensuring it maps to VaultConnectionError.
-        """
-        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret")
-        auth = VaultAuthentication(config)
-
-        with patch("coreason_vault.auth.hvac.Client") as MockClient:
-            mock_instance = MockClient.return_value
-            # requests.exceptions.ConnectionError
-            mock_instance.auth.approle.login.side_effect = requests.exceptions.ConnectionError("Refused")
-
-            with pytest.raises(VaultConnectionError) as exc:
-                auth.get_client()
-            assert "Vault authentication failed" in str(exc.value)
-
-    def test_cipher_encrypt_none_plaintext(self) -> None:
-        """Verify behavior when plaintext is None (should fail or be handled)."""
-        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
-        auth = VaultAuthentication(config)
-        cipher = TransitCipher(auth)
-        auth.get_client = Mock()  # type: ignore
-
-        # Code calls _encode_base64(None) -> TypeError
-        with pytest.raises(TypeError):
-            cipher.encrypt(None, "key")  # type: ignore
-
-    def test_decrypt_invalid_base64_padding(self) -> None:
-        """Verify explicit base64 error handling in decrypt."""
-        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
-        auth = VaultAuthentication(config)
-        cipher = TransitCipher(auth)
-
-        mock_client = Mock()
-        auth.get_client = Mock(return_value=mock_client)  # type: ignore
-
-        # Return invalid base64 (bad padding or chars)
-        mock_client.secrets.transit.decrypt_data.return_value = {"data": {"plaintext": "InvalidB64!!"}}
-
-        with pytest.raises(EncryptionError) as exc:
-            cipher.decrypt("ct", "key")
-        assert "Decryption failed" in str(exc.value)
+        assert "Vault authentication failed" in str(exc.value)

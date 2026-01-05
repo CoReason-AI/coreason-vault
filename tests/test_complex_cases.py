@@ -22,7 +22,7 @@ from coreason_vault.exceptions import EncryptionError
 from coreason_vault.keeper import SecretKeeper
 
 
-@pytest.fixture  # type: ignore[misc, unused-ignore]
+@pytest.fixture  # type: ignore[misc]
 def mock_auth() -> tuple[Mock, Mock]:
     auth = Mock()
     client = Mock()
@@ -152,7 +152,7 @@ class TestAuthResilience:
 
         # Mock _authenticate to return the fresh client
         # We use patch.object on the instance method
-        auth._authenticate = Mock(return_value=fresh_client)  # type: ignore
+        auth._authenticate = Mock(return_value=fresh_client)
 
         # Action: Call get_client()
         result_client = auth.get_client()

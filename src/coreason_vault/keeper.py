@@ -12,11 +12,13 @@ import threading
 from typing import Any, Dict
 
 import hvac
+import requests
 from cachetools import TTLCache
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
-from coreason_vault.exceptions import SecretNotFoundError
+from coreason_vault.exceptions import SecretNotFoundError, VaultConnectionError
 from coreason_vault.utils.logger import logger
 
 
@@ -46,34 +48,53 @@ class SecretKeeper:
                 logger.debug(f"Secret {path} fetched from cache")
                 return self._cache[path]
 
-            # Fetch from Vault
-            client = self.auth.get_client()
-            mount_point = self.config.VAULT_MOUNT_POINT
-
+            # Fetch from Vault (with retries handled by _fetch_from_vault)
+            # Wrap in try/except to catch exhausted retries
             try:
-                # Assume path does not contain mount point if mount_point is configured separately
-                response = client.secrets.kv.v2.read_secret_version(
-                    path=path,
-                    mount_point=mount_point,
-                )
+                secret_data = self._fetch_from_vault(path)
+            except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+                # Catch network errors that exhausted retries
+                logger.error(f"Failed to fetch secret {path} after retries: {e}")
+                raise VaultConnectionError(f"Failed to fetch secret after retries: {e}") from e
 
-                secret_data = response["data"]["data"]
+            # Update cache
+            self._cache[path] = secret_data
 
-                # Update cache
-                self._cache[path] = secret_data
+            logger.info(f"Secret {path} fetched from Vault (cached: False)")
+            return secret_data  # type: ignore[no-any-return]
 
-                logger.info(f"Secret {path} fetched from Vault (cached: False)")
-                return secret_data  # type: ignore[no-any-return]
+    @retry(  # type: ignore[misc]
+        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def _fetch_from_vault(self, path: str) -> Dict[str, Any]:
+        """
+        Internal method to fetch from Vault with retries.
+        """
+        client = self.auth.get_client()
+        mount_point = self.config.VAULT_MOUNT_POINT
 
-            except hvac.exceptions.InvalidPath as e:
-                logger.error(f"Secret not found at path: {path}")
-                raise SecretNotFoundError(f"Secret not found: {path}") from e
-            except hvac.exceptions.Forbidden as e:
-                logger.error(f"Permission denied for secret path: {path}")
-                raise PermissionError(f"Permission denied: {path}") from e
-            except Exception:
-                logger.exception(f"Error fetching secret {path}")
-                raise
+        try:
+            response = client.secrets.kv.v2.read_secret_version(
+                path=path,
+                mount_point=mount_point,
+            )
+            return response["data"]["data"]  # type: ignore[no-any-return]
+
+        except hvac.exceptions.InvalidPath as e:
+            logger.error(f"Secret not found at path: {path}")
+            raise SecretNotFoundError(f"Secret not found: {path}") from e
+        except hvac.exceptions.Forbidden as e:
+            logger.error(f"Permission denied for secret path: {path}")
+            raise PermissionError(f"Permission denied: {path}") from e
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+            # Propagate for retry
+            raise
+        except Exception:
+            logger.exception(f"Error fetching secret {path}")
+            raise
 
     # Alias for convenience and to match spec usage
     get = get_secret
