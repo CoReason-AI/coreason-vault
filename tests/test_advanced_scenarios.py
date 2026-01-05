@@ -10,9 +10,8 @@
 
 import threading
 import time
-from datetime import datetime, timedelta
 from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import requests
@@ -90,7 +89,8 @@ class TestAdvancedScenarios:
     def test_cache_expiry_logic(self) -> None:
         """
         Verify that the cache expires after the TTL.
-        Uses mocking of datetime to simulate time passage.
+        Using cachetools.TTLCache makes this test tricky because it relies on internal time.
+        We can't easily patch time inside the C-extension or library unless we inject a timer.
         """
         config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
         auth = Mock(spec=VaultAuthentication)
@@ -99,8 +99,12 @@ class TestAdvancedScenarios:
 
         client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {"val": "1"}}}
 
+        # Create keeper with very short TTL
         keeper = SecretKeeper(auth, config)
-        keeper.cache_ttl = 60
+        # Manually replace cache with a short TTL for testing
+        from cachetools import TTLCache
+
+        keeper._cache = TTLCache(maxsize=10, ttl=0.1)
 
         # 1. Fetch first time (miss)
         keeper.get_secret("my/secret")
@@ -110,16 +114,9 @@ class TestAdvancedScenarios:
         keeper.get_secret("my/secret")
         assert client.secrets.kv.v2.read_secret_version.call_count == 1
 
-        # 3. Simulate time passing > 60s
-        fake_now = datetime.now() + timedelta(seconds=61)
-        with patch("coreason_vault.keeper.datetime") as mock_dt:
-            # We must mock now() to return our future time
-            # AND we must assume the previous calls used "real" time or compatible time.
-            # The cache stored "expiry = real_now + 60".
-            # our mock_dt.now() returns "real_now + 61".
-            mock_dt.now.return_value = fake_now
+        # 3. Wait for TTL
+        time.sleep(0.15)
 
-            keeper.get_secret("my/secret")
-
-            # Should be a cache miss -> fetch again
-            assert client.secrets.kv.v2.read_secret_version.call_count == 2
+        # 4. Should be a cache miss -> fetch again
+        keeper.get_secret("my/secret")
+        assert client.secrets.kv.v2.read_secret_version.call_count == 2

@@ -9,10 +9,10 @@
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
 import threading
-from datetime import datetime, timedelta
 from typing import Any, Dict
 
 import hvac
+from cachetools import TTLCache
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
@@ -23,38 +23,30 @@ from coreason_vault.utils.logger import logger
 class SecretKeeper:
     """
     Manages secret retrieval from Vault's KV Version 2 engine.
-    Implements caching to reduce load on Vault.
+    Implements caching using TTLCache to reduce load on Vault.
     Thread-safe to prevent cache stampedes.
     """
 
     def __init__(self, auth: VaultAuthentication, config: CoreasonVaultConfig):
         self.auth = auth
         self.config = config
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._cache_expiry: Dict[str, datetime] = {}
-        self.cache_ttl = 60  # seconds
+        # Cache holding up to 1024 secrets for 60 seconds
+        self._cache: TTLCache[str, Dict[str, Any]] = TTLCache(maxsize=1024, ttl=60)
         self._lock = threading.Lock()
 
     def get_secret(self, path: str) -> Dict[str, Any]:
         """
         Retrieves a secret from Vault.
         Checks local cache first.
+        Uses locking to ensure thread-safety with TTLCache (which mutates on access).
         """
-        # Single lock block for simplicity and correctness.
-        # This prevents stampedes by blocking other threads while one fetches.
-        # It also simplifies coverage as there are no race condition branches to test.
         with self._lock:
-            # Check cache
-            if path in self._cache and path in self._cache_expiry:
-                if datetime.now() < self._cache_expiry[path]:
-                    logger.debug(f"Secret {path} fetched from cache")
-                    return self._cache[path]
-                else:
-                    logger.debug(f"Cache expired for {path}")
-                    del self._cache[path]
-                    del self._cache_expiry[path]
+            # Check cache inside lock
+            if path in self._cache:
+                logger.debug(f"Secret {path} fetched from cache")
+                return self._cache[path]
 
-            # Fetch
+            # Fetch from Vault
             client = self.auth.get_client()
             mount_point = self.config.VAULT_MOUNT_POINT
 
@@ -69,7 +61,6 @@ class SecretKeeper:
 
                 # Update cache
                 self._cache[path] = secret_data
-                self._cache_expiry[path] = datetime.now() + timedelta(seconds=self.cache_ttl)
 
                 logger.info(f"Secret {path} fetched from Vault (cached: False)")
                 return secret_data  # type: ignore[no-any-return]
