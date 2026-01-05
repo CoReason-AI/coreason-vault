@@ -8,7 +8,6 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-import time
 from unittest.mock import Mock, patch
 
 import pytest

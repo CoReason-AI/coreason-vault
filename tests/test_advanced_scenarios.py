@@ -10,9 +10,8 @@
 
 import threading
 import time
-from datetime import datetime, timedelta
 from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import requests

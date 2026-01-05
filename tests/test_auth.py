@@ -8,8 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-import time
-from typing import Any, Tuple
+from typing import Any, Generator, Tuple
 from unittest.mock import Mock, patch
 
 import hvac
@@ -20,8 +19,8 @@ from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import VaultConnectionError
 
 
-@pytest.fixture  # type: ignore[misc, unused-ignore]
-def mock_hvac_client() -> Tuple[Mock, Mock]:
+@pytest.fixture  # type: ignore[misc]
+def mock_hvac_client() -> Generator[Tuple[Mock, Mock], None, None]:
     with patch("coreason_vault.auth.hvac.Client") as MockClient:
         # Return the class mock and the instance mock
         yield MockClient, MockClient.return_value
@@ -67,7 +66,7 @@ def test_auth_k8s_missing_role(mock_hvac_client: Any) -> None:
         KUBERNETES_SERVICE_ACCOUNT_TOKEN="jwt-token",
     )
     # Missing role
-    config.VAULT_K8S_ROLE = None  # type: ignore
+    config.VAULT_K8S_ROLE = None
 
     auth = VaultAuthentication(config)
     with pytest.raises(ValueError):
