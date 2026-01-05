@@ -13,6 +13,8 @@ import time
 from typing import Optional
 
 import hvac
+import requests
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import VaultConnectionError
@@ -24,9 +26,6 @@ class VaultAuthentication:
     Handles authentication with HashiCorp Vault.
     Supports AppRole and Kubernetes authentication methods.
     """
-
-    # How often to validate the token with the server (seconds)
-    TOKEN_VALIDATION_INTERVAL = 60
 
     def __init__(self, config: CoreasonVaultConfig):
         self.config = config
@@ -51,18 +50,42 @@ class VaultAuthentication:
                 return self._client
 
             if self._client is None:
-                self._client = self._authenticate()
+                try:
+                    self._client = self._authenticate()
+                except ValueError:
+                    # Configuration errors should propagate immediately
+                    raise
+                except Exception as e:
+                    # Wrap errors from initial auth
+                    if isinstance(e, VaultConnectionError):
+                        raise
+                    logger.error(f"Authentication failed after retries: {e}")
+                    raise VaultConnectionError(f"Vault authentication failed: {e}") from e
                 return self._client
 
             # Must validate
             try:
                 # Check if token is valid and active
                 # lookup_self raises Forbidden if token is invalid/expired
-                self._client.auth.token.lookup_self()
+                response = self._client.auth.token.lookup_self()
+
+                # Check if token is expiring soon (grace period 10s)
+                # response['data']['ttl'] is remaining seconds
+                ttl = response.get("data", {}).get("ttl", 0)
+                if ttl < 10:
+                    logger.info(f"Vault token TTL ({ttl}s) too low, re-authenticating...")
+                    raise hvac.exceptions.Forbidden("Token expiring soon")
+
                 self._last_token_check = time.time()
             except (hvac.exceptions.Forbidden, hvac.exceptions.VaultError):
-                logger.info("Vault token expired or invalid, re-authenticating...")
-                self._client = self._authenticate()
+                logger.info("Vault token expired, invalid, or expiring soon, re-authenticating...")
+                try:
+                    self._client = self._authenticate()
+                except Exception as e:
+                    if isinstance(e, VaultConnectionError):
+                        raise
+                    logger.error(f"Re-authentication failed after retries: {e}")
+                    raise VaultConnectionError(f"Vault re-authentication failed: {e}") from e
 
             return self._client
 
@@ -70,15 +93,22 @@ class VaultAuthentication:
         """
         Determines if we should validate the token against the server.
         """
-        return (time.time() - self._last_token_check) > self.TOKEN_VALIDATION_INTERVAL
+        return (time.time() - self._last_token_check) > self.config.VAULT_TOKEN_TTL
 
+    @retry(  # type: ignore[misc]
+        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
     def _authenticate(self) -> hvac.Client:
         """
         Authenticates to Vault using the configured method.
+        Retries on transient network errors.
         """
         try:
             client = hvac.Client(
-                url=self.config.VAULT_ADDR,
+                url=str(self.config.VAULT_ADDR),
                 namespace=self.config.VAULT_NAMESPACE,
                 verify=self.config.VAULT_VERIFY_SSL,
             )
@@ -116,7 +146,11 @@ class VaultAuthentication:
 
         except ValueError:
             raise
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+            # Let tenacity handle these
+            raise
         except hvac.exceptions.VaultError as e:
+            # Fatal Vault errors (like 400 Bad Request)
             logger.error(f"Failed to authenticate with Vault: {e}")
             raise VaultConnectionError(f"Vault authentication failed: {e}") from e
         except Exception as e:

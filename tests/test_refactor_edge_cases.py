@@ -74,7 +74,7 @@ class TestRefactorEdgeCases:
         auth._client = client
         # Pretend we just validated
         auth._last_token_check = time.time()
-        auth.TOKEN_VALIDATION_INTERVAL = 10  # Set explicitly
+        auth.config.VAULT_TOKEN_TTL = 10  # Set explicitly
 
         # 1. Call immediately - should SKIP lookup_self
         auth.get_client()
@@ -83,6 +83,9 @@ class TestRefactorEdgeCases:
         # 2. Simulate time passing > interval
         # We can just change _last_token_check to be old
         auth._last_token_check = time.time() - 11
+
+        # Mock return value for lookup_self to include TTL
+        client.auth.token.lookup_self.return_value = {"data": {"ttl": 3600}}
 
         auth.get_client()
         client.auth.token.lookup_self.assert_called_once()

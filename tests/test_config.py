@@ -21,7 +21,7 @@ def test_config_defaults() -> None:
     """Test that default values are set correctly."""
     with patch.dict(os.environ, {"VAULT_ADDR": "http://localhost:8200"}, clear=True):
         config = CoreasonVaultConfig()  # type: ignore[call-arg, unused-ignore]
-        assert config.VAULT_ADDR == "http://localhost:8200"
+        assert str(config.VAULT_ADDR) == "http://localhost:8200/"
         assert config.VAULT_MOUNT_POINT == "secret"
         assert config.VAULT_VERIFY_SSL is True
         assert config.VAULT_NAMESPACE is None
@@ -38,7 +38,7 @@ def test_config_env_overrides() -> None:
     }
     with patch.dict(os.environ, env_vars, clear=True):
         config = CoreasonVaultConfig()  # type: ignore[call-arg, unused-ignore]
-        assert config.VAULT_ADDR == "https://vault.example.com"
+        assert str(config.VAULT_ADDR) == "https://vault.example.com/"
         assert config.VAULT_MOUNT_POINT == "custom_secret"
         assert config.VAULT_VERIFY_SSL is False
         assert config.VAULT_NAMESPACE == "admin"

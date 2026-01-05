@@ -10,7 +10,7 @@
 
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,7 +23,7 @@ class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc, unused-ignore]
     model_config = SettingsConfigDict(env_prefix="", case_sensitive=True, extra="ignore")
 
     # Vault Connection
-    VAULT_ADDR: str = Field(..., description="The URL of the Vault server")
+    VAULT_ADDR: HttpUrl = Field(..., description="The URL of the Vault server")
     VAULT_NAMESPACE: Optional[str] = Field(default=None, description="The Vault namespace")
 
     # Auth Methods
@@ -35,5 +35,6 @@ class CoreasonVaultConfig(BaseSettings):  # type: ignore[misc, unused-ignore]
     # Mount Points
     VAULT_MOUNT_POINT: str = Field(default="secret", description="KV v2 Mount Point")
 
-    # Optional
+    # Options
     VAULT_VERIFY_SSL: bool = Field(default=True, description="Verify SSL certificates")
+    VAULT_TOKEN_TTL: int = Field(default=60, description="Token validation interval in seconds")
