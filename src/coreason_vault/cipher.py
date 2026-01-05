@@ -34,35 +34,20 @@ class TransitCipher:
             key_name: The name of the encryption key in Vault.
             context: Optional context for key derivation (must be base64 encoded if passed to hvac,
                      but we accept raw string and handle encoding).
-                     Actually hvac expects base64 encoded string for context if the key is derived.
 
         Returns:
             Ciphertext string (starts with vault:v1:...)
         """
         client = self.auth.get_client()
 
-        # Prepare plaintext: base64 encode
-        if isinstance(plaintext, str):
-            plaintext_bytes = plaintext.encode("utf-8")
-        else:
-            # Handle bytes input
-            plaintext_bytes = plaintext
-
-        encoded_plaintext = base64.b64encode(plaintext_bytes).decode("utf-8")
-
-        # Prepare context if present
-        encoded_context = None
-        if context:
-            encoded_context = base64.b64encode(context.encode("utf-8")).decode("utf-8")
+        encoded_plaintext = self._encode_base64(plaintext)
+        encoded_context = self._encode_base64(context) if context else None
 
         try:
             response = client.secrets.transit.encrypt_data(
                 name=key_name, plaintext=encoded_plaintext, context=encoded_context
             )
-            ciphertext = response["data"]["ciphertext"]
-            # Security: Avoiding excessive logging, but success log is okay
-            # logger.info(f"Data encrypted with key {key_name}")
-            return ciphertext  # type: ignore[no-any-return]
+            return response["data"]["ciphertext"]  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Encryption failed for key {key_name}: {e}")
@@ -78,19 +63,11 @@ class TransitCipher:
             context: Optional context used during encryption.
 
         Returns:
-            Decrypted plaintext (as string if possible, else bytes? Spec says "original").
-            We will return bytes if input was bytes? No, we don't know original type easily.
-            We will return string by default, or bytes?
-            Spec says: "Output: Ciphertext string ... or decrypted Plaintext."
-            The example shows "Sensitive Patient Data" string in -> string out.
-            I will try to decode to utf-8 string, if fail return bytes.
+            Decrypted plaintext (as string if possible, else bytes).
         """
         client = self.auth.get_client()
 
-        # Prepare context if present
-        encoded_context = None
-        if context:
-            encoded_context = base64.b64encode(context.encode("utf-8")).decode("utf-8")
+        encoded_context = self._encode_base64(context) if context else None
 
         try:
             response = client.secrets.transit.decrypt_data(
@@ -108,5 +85,17 @@ class TransitCipher:
 
         except Exception as e:
             logger.error(f"Decryption failed for key {key_name}: {e}")
-            # Ensure binascii.Error (base64 decode fail) is wrapped
             raise EncryptionError(f"Decryption failed: {e}") from e
+
+    def _encode_base64(self, data: Union[str, bytes]) -> str:
+        """
+        Helper to encode input data (string or bytes) to a base64 string.
+        """
+        if isinstance(data, str):
+            data_bytes = data.encode("utf-8")
+        elif isinstance(data, bytes):
+            data_bytes = data
+        else:
+            raise TypeError(f"Expected str or bytes, got {type(data)}")
+
+        return base64.b64encode(data_bytes).decode("utf-8")
