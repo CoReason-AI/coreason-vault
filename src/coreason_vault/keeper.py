@@ -38,22 +38,21 @@ class SecretKeeper:
         """
         Retrieves a secret from Vault.
         Checks local cache first.
-        Uses double-checked locking to optimize for cache hits.
+        Uses double-checked locking to prevent cache stampedes.
         """
-        # 1. Optimistic read (non-blocking)
-        # cachetools is not thread-safe for updates, but reads usually are safe enough in Python (GIL).
-        # However, to be strictly safe and avoid race conditions on expiry/eviction inside cachetools,
-        # we might want to lock. But standard pattern for high performance is double-checked.
-        # If cachetools raises KeyError during iteration/access due to another thread, we catch it?
-        # Standard dict access is atomic. cachetools.__getitem__ involves time check.
-        # Let's trust standard usage or wrap if needed. For now, simple check.
+        # 1. Optimistic read
+        # cachetools is not strict about thread-safety for concurrent read/write,
+        # but in CPython, dictionary reads are atomic. TTLCache expiry cleanup happens on mutation or __getitem__.
+        # To be safe with TTLCache in a threaded environment, we should probably protect *all* access,
+        # or accept a small risk of race during eviction.
+        # However, for 'get', TTLCache might mutate self.__timer.
+        # Let's try optimistic check. If it fails or is weird, we rely on the lock.
         if path in self._cache:
             logger.debug(f"Secret {path} fetched from cache")
             return self._cache[path]
 
         with self._lock:
-            # 2. Check again inside lock (Double-Checked Locking)
-            # Another thread might have filled it while we waited for lock
+            # 2. Double-check inside lock
             if path in self._cache:
                 logger.debug(f"Secret {path} fetched from cache (after lock)")
                 return self._cache[path]
@@ -63,6 +62,7 @@ class SecretKeeper:
             mount_point = self.config.VAULT_MOUNT_POINT
 
             try:
+                # Assume path does not contain mount point if mount_point is configured separately
                 response = client.secrets.kv.v2.read_secret_version(
                     path=path,
                     mount_point=mount_point,
