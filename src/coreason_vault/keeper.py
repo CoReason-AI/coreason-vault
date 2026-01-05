@@ -38,26 +38,15 @@ class SecretKeeper:
         """
         Retrieves a secret from Vault.
         Checks local cache first.
-        Uses double-checked locking to prevent cache stampedes.
+        Uses locking to ensure thread-safety with TTLCache (which mutates on access).
         """
-        # 1. Optimistic read
-        # cachetools is not strict about thread-safety for concurrent read/write,
-        # but in CPython, dictionary reads are atomic. TTLCache expiry cleanup happens on mutation or __getitem__.
-        # To be safe with TTLCache in a threaded environment, we should probably protect *all* access,
-        # or accept a small risk of race during eviction.
-        # However, for 'get', TTLCache might mutate self.__timer.
-        # Let's try optimistic check. If it fails or is weird, we rely on the lock.
-        if path in self._cache:
-            logger.debug(f"Secret {path} fetched from cache")
-            return self._cache[path]
-
         with self._lock:
-            # 2. Double-check inside lock
+            # Check cache inside lock
             if path in self._cache:
-                logger.debug(f"Secret {path} fetched from cache (after lock)")
+                logger.debug(f"Secret {path} fetched from cache")
                 return self._cache[path]
 
-            # 3. Fetch from Vault
+            # Fetch from Vault
             client = self.auth.get_client()
             mount_point = self.config.VAULT_MOUNT_POINT
 

@@ -8,6 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
+import threading
 import time
 from typing import Optional
 
@@ -31,18 +32,29 @@ class VaultAuthentication:
         self.config = config
         self._client: Optional[hvac.Client] = None
         self._last_token_check: float = 0.0
+        self._lock = threading.Lock()
 
     def get_client(self) -> hvac.Client:
         """
         Returns an authenticated Vault client.
         Checks token validity and renews/re-authenticates if necessary.
         Uses a short TTL to avoid checking on every call.
+        Thread-safe to prevent concurrent re-authentication.
         """
-        if self._client is None:
-            self._client = self._authenticate()
+        # First check (optimistic)
+        if self._client is not None and not self._should_validate_token():
             return self._client
 
-        if self._should_validate_token():
+        with self._lock:
+            # Double-check inside lock
+            if self._client is not None and not self._should_validate_token():
+                return self._client
+
+            if self._client is None:
+                self._client = self._authenticate()
+                return self._client
+
+            # Must validate
             try:
                 # Check if token is valid and active
                 # lookup_self raises Forbidden if token is invalid/expired
@@ -52,7 +64,7 @@ class VaultAuthentication:
                 logger.info("Vault token expired or invalid, re-authenticating...")
                 self._client = self._authenticate()
 
-        return self._client
+            return self._client
 
     def _should_validate_token(self) -> bool:
         """
