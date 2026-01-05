@@ -84,5 +84,8 @@ class TestRefactorEdgeCases:
         # We can just change _last_token_check to be old
         auth._last_token_check = time.time() - 11
 
+        # Mock return value for lookup_self to include TTL
+        client.auth.token.lookup_self.return_value = {"data": {"ttl": 3600}}
+
         auth.get_client()
         client.auth.token.lookup_self.assert_called_once()

@@ -116,6 +116,9 @@ def test_token_renewal_check(mock_hvac_client: Any) -> None:
     # We need to expire the TTL to force a check.
     auth._last_token_check = 0  # Force check
 
+    # Mock return value for lookup_self to include TTL
+    client_instance.auth.token.lookup_self.return_value = {"data": {"ttl": 3600}}
+
     auth.get_client()
     client_instance.auth.token.lookup_self.assert_called_once()
 

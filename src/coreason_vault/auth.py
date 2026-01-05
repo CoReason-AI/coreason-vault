@@ -67,10 +67,18 @@ class VaultAuthentication:
             try:
                 # Check if token is valid and active
                 # lookup_self raises Forbidden if token is invalid/expired
-                self._client.auth.token.lookup_self()
+                response = self._client.auth.token.lookup_self()
+
+                # Check if token is expiring soon (grace period 10s)
+                # response['data']['ttl'] is remaining seconds
+                ttl = response.get("data", {}).get("ttl", 0)
+                if ttl < 10:
+                    logger.info(f"Vault token TTL ({ttl}s) too low, re-authenticating...")
+                    raise hvac.exceptions.Forbidden("Token expiring soon")
+
                 self._last_token_check = time.time()
             except (hvac.exceptions.Forbidden, hvac.exceptions.VaultError):
-                logger.info("Vault token expired or invalid, re-authenticating...")
+                logger.info("Vault token expired, invalid, or expiring soon, re-authenticating...")
                 try:
                     self._client = self._authenticate()
                 except Exception as e:
