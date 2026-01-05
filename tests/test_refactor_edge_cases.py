@@ -74,7 +74,7 @@ class TestRefactorEdgeCases:
         auth._client = client
         # Pretend we just validated
         auth._last_token_check = time.time()
-        auth.TOKEN_VALIDATION_INTERVAL = 10  # Set explicitly
+        auth.config.VAULT_TOKEN_TTL = 10  # Set explicitly
 
         # 1. Call immediately - should SKIP lookup_self
         auth.get_client()

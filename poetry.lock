@@ -1244,6 +1244,22 @@ files = [
 ]
 
 [[package]]
+name = "tenacity"
+version = "9.1.2"
+description = "Retry code until it succeeds"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
+    {file = "tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb"},
+]
+
+[package.extras]
+doc = ["reno", "sphinx"]
+test = ["pytest", "tornado (>=4.5)", "typeguard"]
+
+[[package]]
 name = "types-cachetools"
 version = "6.2.0.20251022"
 description = "Typing stubs for cachetools"
@@ -1398,4 +1414,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12, <3.15"
-content-hash = "30bb5f5201e60552cff3693afeed7cf1d3394216b7a2dc06748a5d11a85a2a86"
+content-hash = "a8a3675356f439d172a1ac922050169756397909ce5e262feb2e0cc873af5a36"

@@ -11,6 +11,10 @@
 import base64
 from typing import Optional, Union
 
+import hvac
+import requests
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.exceptions import EncryptionError
 from coreason_vault.utils.logger import logger
@@ -28,16 +32,20 @@ class TransitCipher:
     def encrypt(self, plaintext: Union[str, bytes], key_name: str, context: Optional[str] = None) -> str:
         """
         Encrypts data using Vault Transit engine.
-
-        Args:
-            plaintext: Data to encrypt (string or bytes).
-            key_name: The name of the encryption key in Vault.
-            context: Optional context for key derivation (must be base64 encoded if passed to hvac,
-                     but we accept raw string and handle encoding).
-
-        Returns:
-            Ciphertext string (starts with vault:v1:...)
         """
+        try:
+            return self._encrypt_impl(plaintext, key_name, context)  # type: ignore[no-any-return]
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+            logger.error(f"Encryption failed after retries: {e}")
+            raise EncryptionError(f"Encryption failed due to network error: {e}") from e
+
+    @retry(  # type: ignore[misc]
+        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def _encrypt_impl(self, plaintext: Union[str, bytes], key_name: str, context: Optional[str] = None) -> str:
         client = self.auth.get_client()
 
         encoded_plaintext = self._encode_base64(plaintext)
@@ -49,6 +57,8 @@ class TransitCipher:
             )
             return response["data"]["ciphertext"]  # type: ignore[no-any-return]
 
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+            raise
         except Exception as e:
             logger.error(f"Encryption failed for key {key_name}: {e}")
             raise EncryptionError(f"Encryption failed: {e}") from e
@@ -56,15 +66,20 @@ class TransitCipher:
     def decrypt(self, ciphertext: str, key_name: str, context: Optional[str] = None) -> Union[str, bytes]:
         """
         Decrypts data using Vault Transit engine.
-
-        Args:
-            ciphertext: The ciphertext string (vault:v1:...).
-            key_name: The name of the encryption key.
-            context: Optional context used during encryption.
-
-        Returns:
-            Decrypted plaintext (as string if possible, else bytes).
         """
+        try:
+            return self._decrypt_impl(ciphertext, key_name, context)  # type: ignore[no-any-return]
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+            logger.error(f"Decryption failed after retries: {e}")
+            raise EncryptionError(f"Decryption failed due to network error: {e}") from e
+
+    @retry(  # type: ignore[misc]
+        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def _decrypt_impl(self, ciphertext: str, key_name: str, context: Optional[str] = None) -> Union[str, bytes]:
         client = self.auth.get_client()
 
         encoded_context = self._encode_base64(context) if context else None
@@ -83,6 +98,8 @@ class TransitCipher:
             except UnicodeDecodeError:  # pragma: no cover
                 return plaintext_bytes  # pragma: no cover
 
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+            raise
         except Exception as e:
             logger.error(f"Decryption failed for key {key_name}: {e}")
             raise EncryptionError(f"Decryption failed: {e}") from e

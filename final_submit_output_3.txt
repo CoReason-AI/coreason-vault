@@ -1,0 +1,15 @@
+trim trailing whitespace.................................................Failed
+- hook id: trailing-whitespace
+- exit code: 1
+- files were modified by this hook
+
+Fixing final_verify_tests.txt
+
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check toml...............................................................Passed
+check json...........................................(no files to check)Skipped
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+mypy.....................................................................Passed
+Hadolint.................................................................Passed

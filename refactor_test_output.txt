@@ -1,0 +1,399 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: cov-5.0.0
+collected 53 items
+
+tests/test_additional_edge_cases.py ......F                              [ 13%]
+tests/test_advanced_scenarios.py ...                                     [ 18%]
+tests/test_auth.py .......                                               [ 32%]
+tests/test_auth_coverage.py ..                                           [ 35%]
+tests/test_cipher.py .......                                             [ 49%]
+tests/test_complex_cases.py ........                                     [ 64%]
+tests/test_config.py FF..                                                [ 71%]
+tests/test_edge_cases_new.py F...F.                                      [ 83%]
+tests/test_keeper.py ....                                                [ 90%]
+tests/test_manager.py ..                                                 [ 94%]
+tests/test_refactor_edge_cases.py .F                                     [ 98%]
+tests/test_utils.py .                                                    [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_auth_network_timeout ___________________________
+
+    def test_auth_network_timeout() -> None:
+        """Test that connection timeouts (requests exceptions) are wrapped."""
+        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret")
+        auth = VaultAuthentication(config)
+
+        with patch("coreason_vault.auth.hvac.Client") as MockClient:
+            # Simulate exception during Init
+            MockClient.side_effect = requests.exceptions.ConnectTimeout("Timeout")
+
+            with pytest.raises(VaultConnectionError) as exc:
+>               auth.get_client()
+
+tests/test_additional_edge_cases.py:183:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/coreason_vault/auth.py:53: in get_client
+    self._client = self._authenticate()
+                   ^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:338: in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:477: in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:378: in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:420: in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:187: in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/auth.py:86: in _authenticate
+    client = hvac.Client(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: in _execute_mock_call
+    raise effect
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/auth.py:86: in _authenticate
+    client = hvac.Client(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: in _execute_mock_call
+    raise effect
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/auth.py:86: in _authenticate
+    client = hvac.Client(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='Client' id='139854108344928'>, args = ()
+kwargs = {'namespace': None, 'url': 'http://localhost:8200/', 'verify': True}
+effect = ConnectTimeout('Timeout')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               requests.exceptions.ConnectTimeout: Timeout
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: ConnectTimeout
+_____________________________ test_config_defaults _____________________________
+
+    def test_config_defaults() -> None:
+        """Test that default values are set correctly."""
+        with patch.dict(os.environ, {"VAULT_ADDR": "http://localhost:8200"}, clear=True):
+            config = CoreasonVaultConfig()  # type: ignore[call-arg, unused-ignore]
+>           assert config.VAULT_ADDR == "http://localhost:8200"
+E           AssertionError: assert HttpUrl('http://localhost:8200/') == 'http://localhost:8200'
+E            +  where HttpUrl('http://localhost:8200/') = CoreasonVaultConfig(VAULT_ADDR=HttpUrl('http://localhost:8200/'), VAULT_NAMESPACE=None, VAULT_ROLE_ID=None, VAULT_SECR...OLE=None, KUBERNETES_SERVICE_ACCOUNT_TOKEN=None, VAULT_MOUNT_POINT='secret', VAULT_VERIFY_SSL=True, VAULT_TOKEN_TTL=60).VAULT_ADDR
+
+tests/test_config.py:24: AssertionError
+__________________________ test_config_env_overrides ___________________________
+
+    def test_config_env_overrides() -> None:
+        """Test that environment variables override defaults."""
+        env_vars = {
+            "VAULT_ADDR": "https://vault.example.com",
+            "VAULT_MOUNT_POINT": "custom_secret",
+            "VAULT_VERIFY_SSL": "false",
+            "VAULT_NAMESPACE": "admin",
+            "VAULT_K8S_ROLE": "test-role",
+        }
+        with patch.dict(os.environ, env_vars, clear=True):
+            config = CoreasonVaultConfig()  # type: ignore[call-arg, unused-ignore]
+>           assert config.VAULT_ADDR == "https://vault.example.com"
+E           AssertionError: assert HttpUrl('https://vault.example.com/') == 'https://vault.example.com'
+E            +  where HttpUrl('https://vault.example.com/') = CoreasonVaultConfig(VAULT_ADDR=HttpUrl('https://vault.example.com/'), VAULT_NAMESPACE='admin', VAULT_ROLE_ID=None, VAU..., KUBERNETES_SERVICE_ACCOUNT_TOKEN=None, VAULT_MOUNT_POINT='custom_secret', VAULT_VERIFY_SSL=False, VAULT_TOKEN_TTL=60).VAULT_ADDR
+
+tests/test_config.py:41: AssertionError
+___________ TestEdgeCasesNew.test_network_timeout_during_encryption ____________
+
+self = <test_edge_cases_new.TestEdgeCasesNew object at 0x7f3250c82900>
+mock_auth = (<Mock spec='VaultAuthentication' id='139854080602912'>, <Mock name='mock.get_client()' id='139854080603776'>)
+
+    def test_network_timeout_during_encryption(self, mock_auth: Tuple[Mock, Mock]) -> None:
+        """
+        Verify that a network timeout (requests.exceptions.Timeout) during encryption
+        is wrapped into an EncryptionError (or bubbles up appropriately).
+        """
+        auth, client = mock_auth
+        cipher = TransitCipher(auth)
+
+        # Simulate network timeout
+        client.secrets.transit.encrypt_data.side_effect = requests.exceptions.Timeout("Connection timed out")
+
+        with pytest.raises(EncryptionError) as exc:
+>           cipher.encrypt("data", "key")
+
+tests/test_edge_cases_new.py:51:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:338: in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:477: in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:378: in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:420: in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:187: in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/cipher.py:48: in encrypt
+    response = client.secrets.transit.encrypt_data(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: in _execute_mock_call
+    raise effect
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/cipher.py:48: in encrypt
+    response = client.secrets.transit.encrypt_data(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: in _execute_mock_call
+    raise effect
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/cipher.py:48: in encrypt
+    response = client.secrets.transit.encrypt_data(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock name='mock.get_client().secrets.transit.encrypt_data' id='139854092951408'>
+args = (), kwargs = {'context': None, 'name': 'key', 'plaintext': 'ZGF0YQ=='}
+effect = Timeout('Connection timed out')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               requests.exceptions.Timeout: Connection timed out
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: Timeout
+________________ TestEdgeCasesNew.test_auth_connection_timeout _________________
+
+self = <test_edge_cases_new.TestEdgeCasesNew object at 0x7f3250c82f60>
+
+    def test_auth_connection_timeout(self) -> None:
+        """
+        Verify that if the initial auth connection times out, it raises VaultConnectionError.
+        """
+        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret")
+        auth = VaultAuthentication(config)
+
+        with patch("hvac.Client") as MockClient:
+            # Simulate timeout during login
+            instance = MockClient.return_value
+            instance.auth.approle.login.side_effect = requests.exceptions.Timeout("Connect timeout")
+
+            with pytest.raises(VaultConnectionError) as exc:
+>               auth.get_client()
+
+tests/test_edge_cases_new.py:119:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/coreason_vault/auth.py:53: in get_client
+    self._client = self._authenticate()
+                   ^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:338: in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:477: in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:378: in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:420: in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:187: in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/auth.py:94: in _authenticate
+    client.auth.approle.login(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: in _execute_mock_call
+    raise effect
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/auth.py:94: in _authenticate
+    client.auth.approle.login(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: in _execute_mock_call
+    raise effect
+/home/jules/.cache/pypoetry/virtualenvs/coreason-vault-9TtSrW0h-py3.12/lib/python3.12/site-packages/tenacity/__init__.py:480: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+src/coreason_vault/auth.py:94: in _authenticate
+    client.auth.approle.login(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='Client().auth.approle.login' id='139854078653072'>
+args = (), kwargs = {'role_id': 'role', 'secret_id': 'secret'}
+effect = Timeout('Connect timeout')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               requests.exceptions.Timeout: Connect timeout
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1198: Timeout
+----------------------------- Captured stderr call -----------------------------
+2026-01-05 09:27:22 | INFO     | coreason_vault.auth:_authenticate:93 - Authenticating to Vault via AppRole
+2026-01-05 09:27:24 | INFO     | coreason_vault.auth:_authenticate:93 - Authenticating to Vault via AppRole
+2026-01-05 09:27:26 | INFO     | coreason_vault.auth:_authenticate:93 - Authenticating to Vault via AppRole
+__________ TestRefactorEdgeCases.test_auth_token_validation_interval ___________
+
+self = <test_refactor_edge_cases.TestRefactorEdgeCases object at 0x7f3250cb4080>
+
+    def test_auth_token_validation_interval(self) -> None:
+        """
+        Verify that token validation is skipped if within the interval,
+        and performed if interval passed.
+        """
+        config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="r", VAULT_SECRET_ID="s")
+        auth = VaultAuthentication(config)
+
+        # Mock client
+        client = Mock()
+        client.is_authenticated.return_value = True
+
+        # Inject client
+        auth._client = client
+        # Pretend we just validated
+        auth._last_token_check = time.time()
+        auth.TOKEN_VALIDATION_INTERVAL = 10  # Set explicitly
+
+        # 1. Call immediately - should SKIP lookup_self
+        auth.get_client()
+        client.auth.token.lookup_self.assert_not_called()
+
+        # 2. Simulate time passing > interval
+        # We can just change _last_token_check to be old
+        auth._last_token_check = time.time() - 11
+
+        auth.get_client()
+>       client.auth.token.lookup_self.assert_called_once()
+
+tests/test_refactor_edge_cases.py:88:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock name='mock.auth.token.lookup_self' id='139854077512208'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'lookup_self' to have been called once. Called 0 times.
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:928: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_additional_edge_cases.py::test_auth_network_timeout - reque...
+FAILED tests/test_config.py::test_config_defaults - AssertionError: assert Ht...
+FAILED tests/test_config.py::test_config_env_overrides - AssertionError: asse...
+FAILED tests/test_edge_cases_new.py::TestEdgeCasesNew::test_network_timeout_during_encryption
+FAILED tests/test_edge_cases_new.py::TestEdgeCasesNew::test_auth_connection_timeout
+FAILED tests/test_refactor_edge_cases.py::TestRefactorEdgeCases::test_auth_token_validation_interval
+======================== 6 failed, 47 passed in 14.62s =========================
