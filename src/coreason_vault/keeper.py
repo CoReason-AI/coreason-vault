@@ -81,7 +81,10 @@ class SecretKeeper:
                 path=path,
                 mount_point=mount_point,
             )
-            return response["data"]["data"]  # type: ignore[no-any-return]
+            data = response["data"]["data"]
+            if not isinstance(data, dict):
+                raise ValueError(f"Expected dict from Vault, got {type(data)}")
+            return data
 
         except hvac.exceptions.InvalidPath as e:
             logger.error(f"Secret not found at path: {path}")
