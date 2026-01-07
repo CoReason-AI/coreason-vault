@@ -44,9 +44,7 @@ class TestExtraEdgeCases:
         ct = cipher.encrypt("", "key")
         assert ct == "vault:v1:empty"
         # Check that empty string was sent as plaintext (Base64 encoded empty is empty)
-        client.secrets.transit.encrypt_data.assert_called_with(
-            name="key", plaintext="", context=None
-        )
+        client.secrets.transit.encrypt_data.assert_called_with(name="key", plaintext="", context=None)
 
         # Decrypt to empty string
         client.secrets.transit.decrypt_data.return_value = {"data": {"plaintext": ""}}
@@ -126,16 +124,14 @@ class TestExtraEdgeCases:
         auth, client = mock_auth
         cipher = TransitCipher(auth)
 
-        binary_data = b"\x00\xFF\x10\x20"
+        binary_data = b"\x00\xff\x10\x20"
         expected_b64 = base64.b64encode(binary_data).decode("utf-8")
 
         client.secrets.transit.encrypt_data.return_value = {"data": {"ciphertext": "vault:v1:bin"}}
 
         cipher.encrypt(binary_data, "key")
 
-        client.secrets.transit.encrypt_data.assert_called_with(
-            name="key", plaintext=expected_b64, context=None
-        )
+        client.secrets.transit.encrypt_data.assert_called_with(name="key", plaintext=expected_b64, context=None)
 
     def test_lookup_self_returns_malformed_data(self) -> None:
         """
@@ -145,7 +141,7 @@ class TestExtraEdgeCases:
             VAULT_ADDR="http://localhost:8200",
             VAULT_ROLE_ID="role",
             VAULT_SECRET_ID="secret",
-            VAULT_TOKEN_TTL=0  # Force validation
+            VAULT_TOKEN_TTL=0,  # Force validation
         )
         auth = VaultAuthentication(config)
 
@@ -154,7 +150,7 @@ class TestExtraEdgeCases:
         auth._client = mock_client
 
         # lookup_self returns success but missing ttl
-        mock_client.auth.token.lookup_self.return_value = {"data": {}} # No 'ttl'
+        mock_client.auth.token.lookup_self.return_value = {"data": {}}  # No 'ttl'
 
         # Implementation: ttl = response.get("data", {}).get("ttl", 0)
         # So it defaults to 0.
@@ -162,12 +158,12 @@ class TestExtraEdgeCases:
         # So this should trigger re-authentication.
 
         # Mock re-authentication logic
-        mock_client.login = Mock() # doesn't matter, we mock _authenticate method usually or class
+        mock_client.login = Mock()  # doesn't matter, we mock _authenticate method usually or class
 
         # But wait, Auth calls `self._authenticate()` if Forbidden is raised.
         # We need to mock `_authenticate` to avoid actual network call and to verify it was called.
 
-        auth._authenticate = Mock(return_value=mock_client) # type: ignore[assignment]
+        auth._authenticate = Mock(return_value=mock_client)
 
         auth.get_client()
 
