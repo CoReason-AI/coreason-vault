@@ -8,17 +8,17 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-from unittest.mock import Mock, patch
 from typing import Any
+from unittest.mock import Mock, patch
 
-import pytest
 import hvac
+import pytest
 import requests
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
-from coreason_vault.keeper import SecretKeeper
 from coreason_vault.exceptions import VaultConnectionError
+from coreason_vault.keeper import SecretKeeper
 
 
 @pytest.fixture  # type: ignore[misc]
@@ -38,7 +38,7 @@ class TestNewComplexEdgeCases:
             VAULT_ADDR="http://localhost:8200",
             VAULT_ROLE_ID="role",
             VAULT_SECRET_ID="secret",
-            VAULT_NAMESPACE="my-namespace"
+            VAULT_NAMESPACE="my-namespace",
         )
         auth = VaultAuthentication(config)
 
@@ -48,11 +48,7 @@ class TestNewComplexEdgeCases:
 
             auth.get_client()
 
-            MockClient.assert_called_with(
-                url="http://localhost:8200/",
-                namespace="my-namespace",
-                verify=True
-            )
+            MockClient.assert_called_with(url="http://localhost:8200/", namespace="my-namespace", verify=True)
 
     def test_read_timeout_handling_in_keeper(self, mock_auth: Any) -> None:
         """
@@ -83,11 +79,7 @@ class TestNewComplexEdgeCases:
 
         # 1MB string
         large_value = "X" * 1024 * 1024
-        client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {
-                "data": {"large_key": large_value}
-            }
-        }
+        client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {"large_key": large_value}}}
 
         result = keeper.get_secret("large/secret")
         assert result["large_key"] == large_value
@@ -101,18 +93,9 @@ class TestNewComplexEdgeCases:
         config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
         keeper = SecretKeeper(auth, config)
 
-        complex_data = {
-            "": "empty_key",
-            "empty_val": "",
-            "none_val": None,
-            " ": "space_key"
-        }
+        complex_data = {"": "empty_key", "empty_val": "", "none_val": None, " ": "space_key"}
 
-        client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {
-                "data": complex_data
-            }
-        }
+        client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": complex_data}}
 
         result = keeper.get_secret("complex/empty")
         assert result == complex_data
@@ -140,10 +123,7 @@ class TestNewComplexEdgeCases:
         Verify _should_validate_token logic with precise boundary checks.
         """
         config = CoreasonVaultConfig(
-            VAULT_ADDR="http://localhost:8200",
-            VAULT_ROLE_ID="role",
-            VAULT_SECRET_ID="secret",
-            VAULT_TOKEN_TTL=60
+            VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret", VAULT_TOKEN_TTL=60
         )
         auth = VaultAuthentication(config)
 
@@ -170,10 +150,7 @@ class TestNewComplexEdgeCases:
         Verify VAULT_VERIFY_SSL=False is propagated to hvac.Client.
         """
         config = CoreasonVaultConfig(
-            VAULT_ADDR="http://localhost:8200",
-            VAULT_ROLE_ID="role",
-            VAULT_SECRET_ID="secret",
-            VAULT_VERIFY_SSL=False
+            VAULT_ADDR="http://localhost:8200", VAULT_ROLE_ID="role", VAULT_SECRET_ID="secret", VAULT_VERIFY_SSL=False
         )
         auth = VaultAuthentication(config)
 
@@ -183,8 +160,4 @@ class TestNewComplexEdgeCases:
 
             auth.get_client()
 
-            MockClient.assert_called_with(
-                url="http://localhost:8200/",
-                namespace=None,
-                verify=False
-            )
+            MockClient.assert_called_with(url="http://localhost:8200/", namespace=None, verify=False)
