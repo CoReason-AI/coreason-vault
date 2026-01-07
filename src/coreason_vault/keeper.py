@@ -61,7 +61,7 @@ class SecretKeeper:
             self._cache[path] = secret_data
 
             logger.info(f"Secret {path} fetched from Vault (cached: False)")
-            return secret_data  # type: ignore[no-any-return]
+        return secret_data  # type: ignore[no-any-return]
 
     @retry(  # type: ignore[misc]
         retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
