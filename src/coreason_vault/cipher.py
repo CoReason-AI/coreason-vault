@@ -19,6 +19,14 @@ from coreason_vault.auth import VaultAuthentication
 from coreason_vault.exceptions import EncryptionError
 from coreason_vault.utils.logger import logger
 
+# Define retryable exceptions
+RETRYABLE_EXCEPTIONS = (
+    requests.exceptions.RequestException,
+    hvac.exceptions.VaultDown,
+    hvac.exceptions.InternalServerError,
+    hvac.exceptions.BadGateway,
+)
+
 
 class TransitCipher:
     """
@@ -35,12 +43,12 @@ class TransitCipher:
         """
         try:
             return self._encrypt_impl(plaintext, key_name, context)  # type: ignore[no-any-return]
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+        except RETRYABLE_EXCEPTIONS as e:
             logger.error(f"Encryption failed after retries: {e}")
             raise EncryptionError(f"Encryption failed due to network error: {e}") from e
 
     @retry(  # type: ignore[misc]
-        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         reraise=True,
@@ -57,7 +65,7 @@ class TransitCipher:
             )
             return response["data"]["ciphertext"]  # type: ignore[no-any-return]
 
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+        except RETRYABLE_EXCEPTIONS:
             raise
         except Exception as e:
             logger.error(f"Encryption failed for key {key_name}: {e}")
@@ -69,12 +77,12 @@ class TransitCipher:
         """
         try:
             return self._decrypt_impl(ciphertext, key_name, context)  # type: ignore[no-any-return]
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+        except RETRYABLE_EXCEPTIONS as e:
             logger.error(f"Decryption failed after retries: {e}")
             raise EncryptionError(f"Decryption failed due to network error: {e}") from e
 
     @retry(  # type: ignore[misc]
-        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         reraise=True,
@@ -98,7 +106,7 @@ class TransitCipher:
             except UnicodeDecodeError:  # pragma: no cover
                 return plaintext_bytes  # pragma: no cover
 
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+        except RETRYABLE_EXCEPTIONS:
             raise
         except Exception as e:
             logger.error(f"Decryption failed for key {key_name}: {e}")
