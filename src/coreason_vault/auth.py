@@ -20,6 +20,14 @@ from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import VaultConnectionError
 from coreason_vault.utils.logger import logger
 
+# Define retryable exceptions
+RETRYABLE_EXCEPTIONS = (
+    requests.exceptions.RequestException,
+    hvac.exceptions.VaultDown,
+    hvac.exceptions.InternalServerError,
+    hvac.exceptions.BadGateway,
+)
+
 
 class VaultAuthentication:
     """
@@ -96,7 +104,7 @@ class VaultAuthentication:
         return (time.time() - self._last_token_check) > self.config.VAULT_TOKEN_TTL
 
     @retry(  # type: ignore[misc]
-        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         reraise=True,
@@ -146,7 +154,7 @@ class VaultAuthentication:
 
         except ValueError:
             raise
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+        except RETRYABLE_EXCEPTIONS:
             # Let tenacity handle these
             raise
         except hvac.exceptions.VaultError as e:

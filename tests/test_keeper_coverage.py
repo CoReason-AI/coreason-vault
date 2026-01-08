@@ -1,28 +1,46 @@
-from unittest.mock import MagicMock, Mock
+# Copyright (c) 2025 CoReason, Inc.
+#
+# This software is proprietary and dual-licensed.
+# Licensed under the Prosperity Public License 3.0 (the "License").
+# A copy of the license is available at https://prosperitylicense.com/versions/3.0.0
+# For details, see the LICENSE file.
+# Commercial use beyond a 30-day trial requires a separate license.
+#
+# Source Code: https://github.com/CoReason-AI/coreason_vault
 
+from typing import Any, Generator, Tuple
+from unittest.mock import Mock
+
+import hvac
 import pytest
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
+from coreason_vault.exceptions import SecretNotFoundError
 from coreason_vault.keeper import SecretKeeper
 
 
-def test_fetch_from_vault_returns_non_dict_data() -> None:
+@pytest.fixture  # type: ignore[misc]
+def mock_auth() -> Generator[Tuple[Mock, Mock], None, None]:
+    auth = Mock(spec=VaultAuthentication)
+    client = Mock(spec=hvac.Client)
+    auth.get_client.return_value = client
+    yield auth, client
+
+
+def test_dynamic_secret_invalid_path(mock_auth: Any) -> None:
     """
-    Test that _fetch_from_vault raises ValueError when Vault returns non-dict data.
+    Test that get_dynamic_secret correctly handles hvac.exceptions.InvalidPath
+    by raising SecretNotFoundError.
     """
-    mock_config = Mock(spec=CoreasonVaultConfig)
-    mock_config.VAULT_MOUNT_POINT = "secret"
-    mock_auth = Mock(spec=VaultAuthentication)
+    auth, client = mock_auth
+    config = CoreasonVaultConfig(VAULT_ADDR="http://localhost:8200")
+    keeper = SecretKeeper(auth, config)
 
-    keeper = SecretKeeper(mock_auth, mock_config)
+    # Simulate InvalidPath exception from hvac
+    client.read.side_effect = hvac.exceptions.InvalidPath("Invalid Path")
 
-    # Mock the client and response
-    mock_client = MagicMock()
-    mock_auth.get_client.return_value = mock_client
+    with pytest.raises(SecretNotFoundError) as exc:
+        keeper.get_dynamic_secret("invalid/path")
 
-    # Simulate Vault returning a list instead of a dict
-    mock_client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": ["not", "a", "dict"]}}
-
-    with pytest.raises(ValueError, match="Expected dict from Vault"):
-        keeper._fetch_from_vault("some/path")
+    assert "Secret not found: invalid/path" in str(exc.value)
