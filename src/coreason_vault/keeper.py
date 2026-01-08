@@ -99,5 +99,59 @@ class SecretKeeper:
             logger.exception(f"Error fetching secret {path}")
             raise
 
+    def get_dynamic_secret(self, path: str) -> Dict[str, Any]:
+        """
+        Retrieves a dynamic secret (e.g., AWS, Database creds) from Vault.
+        Does NOT use the local cache to ensure freshness and respect lease duration.
+        Returns the full response including lease_id and lease_duration.
+        """
+        try:
+            return self._fetch_dynamic_secret(path)  # type: ignore[no-any-return]
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+            logger.error(f"Failed to fetch dynamic secret {path} after retries: {e}")
+            raise VaultConnectionError(f"Failed to fetch dynamic secret after retries: {e}") from e
+
+    @retry(  # type: ignore[misc]
+        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def _fetch_dynamic_secret(self, path: str) -> Dict[str, Any]:
+        """
+        Internal method to fetch dynamic secret with retries.
+        """
+        client = self.auth.get_client()
+
+        try:
+            # Use raw read for dynamic backends
+            response = client.read(path)
+
+            if response is None:
+                # client.read returns None if path doesn't exist or is 404
+                logger.error(f"Dynamic secret not found at path: {path}")
+                raise SecretNotFoundError(f"Dynamic secret not found: {path}")
+
+            # Dynamic secrets usually have 'data', 'lease_id', 'lease_duration' at top level
+            # We return the whole response so consumer can see lease info.
+            if not isinstance(response, dict):
+                raise ValueError(f"Expected dict from Vault, got {type(response)}")
+
+            logger.info(f"Dynamic secret {path} fetched from Vault")
+            return response
+
+        except hvac.exceptions.InvalidPath as e:
+            logger.error(f"Dynamic secret path invalid: {path}")
+            raise SecretNotFoundError(f"Secret not found: {path}") from e
+        except hvac.exceptions.Forbidden as e:
+            logger.error(f"Permission denied for dynamic secret path: {path}")
+            raise PermissionError(f"Permission denied: {path}") from e
+        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+            # Propagate
+            raise
+        except Exception:
+            logger.exception(f"Error fetching dynamic secret {path}")
+            raise
+
     # Alias for convenience and to match spec usage
     get = get_secret
