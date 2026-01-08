@@ -21,6 +21,14 @@ from coreason_vault.config import CoreasonVaultConfig
 from coreason_vault.exceptions import SecretNotFoundError, VaultConnectionError
 from coreason_vault.utils.logger import logger
 
+# Define retryable exceptions
+RETRYABLE_EXCEPTIONS = (
+    requests.exceptions.RequestException,
+    hvac.exceptions.VaultDown,
+    hvac.exceptions.InternalServerError,
+    hvac.exceptions.BadGateway,
+)
+
 
 class SecretKeeper:
     """
@@ -52,7 +60,7 @@ class SecretKeeper:
             # Wrap in try/except to catch exhausted retries
             try:
                 secret_data = self._fetch_from_vault(path)
-            except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+            except RETRYABLE_EXCEPTIONS as e:
                 # Catch network errors that exhausted retries
                 logger.error(f"Failed to fetch secret {path} after retries: {e}")
                 raise VaultConnectionError(f"Failed to fetch secret after retries: {e}") from e
@@ -64,7 +72,7 @@ class SecretKeeper:
         return secret_data  # type: ignore[no-any-return]
 
     @retry(  # type: ignore[misc]
-        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         reraise=True,
@@ -92,7 +100,7 @@ class SecretKeeper:
         except hvac.exceptions.Forbidden as e:
             logger.error(f"Permission denied for secret path: {path}")
             raise PermissionError(f"Permission denied: {path}") from e
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+        except RETRYABLE_EXCEPTIONS:
             # Propagate for retry
             raise
         except Exception:
@@ -107,12 +115,12 @@ class SecretKeeper:
         """
         try:
             return self._fetch_dynamic_secret(path)  # type: ignore[no-any-return]
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown) as e:
+        except RETRYABLE_EXCEPTIONS as e:
             logger.error(f"Failed to fetch dynamic secret {path} after retries: {e}")
             raise VaultConnectionError(f"Failed to fetch dynamic secret after retries: {e}") from e
 
     @retry(  # type: ignore[misc]
-        retry=retry_if_exception_type((requests.exceptions.RequestException, hvac.exceptions.VaultDown)),
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         reraise=True,
@@ -146,7 +154,7 @@ class SecretKeeper:
         except hvac.exceptions.Forbidden as e:
             logger.error(f"Permission denied for dynamic secret path: {path}")
             raise PermissionError(f"Permission denied: {path}") from e
-        except (requests.exceptions.RequestException, hvac.exceptions.VaultDown):
+        except RETRYABLE_EXCEPTIONS:
             # Propagate
             raise
         except Exception:
