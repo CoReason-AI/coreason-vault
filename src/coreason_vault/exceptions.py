@@ -8,9 +8,20 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_vault
 
-from coreason_vault.utils.logger import logger
+
+class VaultConnectionError(Exception):
+    """Raised when Vault is unreachable or authentication fails."""
+
+    pass
 
 
-def hello_world() -> str:
-    logger.info("Hello World!")
-    return "Hello World!"
+class SecretNotFoundError(Exception):
+    """Raised when a secret is not found in Vault."""
+
+    pass
+
+
+class EncryptionError(Exception):
+    """Raised when encryption or decryption fails."""
+
+    pass
