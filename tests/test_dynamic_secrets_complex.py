@@ -19,7 +19,6 @@ import requests
 
 from coreason_vault.auth import VaultAuthentication
 from coreason_vault.config import CoreasonVaultConfig
-from coreason_vault.exceptions import VaultConnectionError
 from coreason_vault.keeper import SecretKeeper
 
 
@@ -73,12 +72,8 @@ class TestDynamicSecretsComplex:
         # Create a 1MB payload
         large_cert = "BEGIN CERTIFICATE\n" + ("A" * 1024 * 1024) + "\nEND CERTIFICATE"
         mock_response = {
-            "data": {
-                "certificate": large_cert,
-                "private_key": "private...",
-                "ca_chain": ["cert1", "cert2"]
-            },
-            "lease_duration": 7200
+            "data": {"certificate": large_cert, "private_key": "private...", "ca_chain": ["cert1", "cert2"]},
+            "lease_duration": 7200,
         }
         client.read.return_value = mock_response
 
@@ -104,9 +99,9 @@ class TestDynamicSecretsComplex:
                 "issuing_ca": "ca-data",
                 "private_key": "key-data",
                 "private_key_type": "rsa",
-                "serial_number": "00:11:22:33"
+                "serial_number": "00:11:22:33",
             },
-            "warnings": None
+            "warnings": None,
         }
         client.read.return_value = pki_response
 
@@ -126,7 +121,7 @@ class TestDynamicSecretsComplex:
         client.read.side_effect = [
             requests.exceptions.ConnectionError("Fail 1"),
             requests.exceptions.ConnectionError("Fail 2"),
-            {"data": {"k": "v"}}
+            {"data": {"k": "v"}},
         ]
 
         res = keeper.get_dynamic_secret("aws/creds/role")
@@ -152,10 +147,7 @@ class TestDynamicSecretsComplex:
         # 502 -> BadGateway
         # 503 -> ServiceUnavailable
 
-        client.read.side_effect = [
-            hvac.exceptions.InternalServerError("500 Error"),
-            {"data": {"success": True}}
-        ]
+        client.read.side_effect = [hvac.exceptions.InternalServerError("500 Error"), {"data": {"success": True}}]
 
         # If strict policy: raise VaultError (not VaultDown) -> Test fails (raises InternalServerError)
         # If loose policy: retry -> success
@@ -168,4 +160,4 @@ class TestDynamicSecretsComplex:
             assert res["data"]["success"] is True
             assert client.read.call_count == 2
         except hvac.exceptions.InternalServerError:
-             pytest.fail("Did not retry on InternalServerError")
+            pytest.fail("Did not retry on InternalServerError")
